@@ -1,29 +1,19 @@
 import { Tabs } from "expo-router";
+import { TabBar } from "../../components/TabBar";
+import { colors } from "../../theme";
 
 export default function TabLayout() {
   return (
-    <Tabs>
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: "Travel",
-          tabBarLabel: "Travel",
-        }}
-      />
-      <Tabs.Screen
-        name="camera"
-        options={{
-          title: "Camera",
-          tabBarLabel: "Camera",
-        }}
-      />
-      <Tabs.Screen
-        name="meeting"
-        options={{
-          title: "Meeting",
-          tabBarLabel: "Meeting",
-        }}
-      />
+    <Tabs
+      tabBar={(props) => <TabBar {...props} />}
+      screenOptions={{
+        headerShown: false,
+        sceneStyle: { backgroundColor: colors.bgPrimary },
+      }}
+    >
+      <Tabs.Screen name="index" />
+      <Tabs.Screen name="camera" />
+      <Tabs.Screen name="meeting" />
     </Tabs>
   );
 }
