@@ -1,3 +1,4 @@
+// voxlingo/app/(tabs)/meeting.tsx
 import { useState, useRef, useCallback } from "react";
 import {
   View,
@@ -8,33 +9,33 @@ import {
   SafeAreaView,
   Alert,
 } from "react-native";
+import { Globe } from "lucide-react-native";
 import { LanguageCode, TranscriptEntry } from "../../types";
 import { DEFAULT_TARGET_LANG } from "../../constants/languages";
 import { LanguagePicker } from "../../components/LanguagePicker";
 import { SubtitleOverlay } from "../../components/SubtitleOverlay";
+import { ErrorBanner } from "../../components/ErrorBanner";
 import {
   useMeetingStream,
   MeetingUtteranceData,
 } from "../../hooks/useMeetingStream";
 import { exportAndShareTranscript } from "../../services/transcript";
-
-const SPEAKER_COLORS = [
-  "#3b82f6",
-  "#ef4444",
-  "#10b981",
-  "#f59e0b",
-  "#8b5cf6",
-  "#ec4899",
-  "#06b6d4",
-  "#f97316",
-];
+import {
+  colors,
+  speakerColors,
+  spacing,
+  borderRadius,
+  shadows,
+  fontFamily,
+  fontSize,
+} from "../../theme";
 
 function getSpeakerColor(speaker: string, speakerMap: Map<string, number>): string {
   if (!speakerMap.has(speaker)) {
     speakerMap.set(speaker, speakerMap.size);
   }
   const index = speakerMap.get(speaker)!;
-  return SPEAKER_COLORS[index % SPEAKER_COLORS.length];
+  return speakerColors[index % speakerColors.length].start;
 }
 
 function formatDuration(seconds: number): string {
@@ -81,7 +82,6 @@ export default function MeetingScreen() {
       Alert.alert("No transcript", "Start a meeting session first.");
       return;
     }
-
     try {
       setIsExporting(true);
       await exportAndShareTranscript(utterances, duration);
@@ -99,93 +99,122 @@ export default function MeetingScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Top Bar */}
-      <View style={styles.topBar}>
-        <LanguagePicker
-          selectedLang={userLang}
-          onSelect={setUserLang}
-          label="My language"
-        />
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.title}>Meeting</Text>
         {isListening && (
-          <View style={styles.timerContainer}>
+          <View style={styles.liveBadge}>
             <View style={styles.liveDot} />
             <Text style={styles.timerText}>{formatDuration(duration)}</Text>
           </View>
         )}
       </View>
 
-      {/* Subtitle List */}
+      {/* Target language */}
+      {!isListening ? (
+        <View style={styles.langSection}>
+          <Text style={styles.langLabel}>TRANSLATE TO</Text>
+          <LanguagePicker selectedLang={userLang} onSelect={setUserLang} />
+        </View>
+      ) : (
+        <View style={styles.langCompact}>
+          <Globe size={12} color={colors.accentCyan} strokeWidth={2} />
+          <Text style={styles.langCompactLabel}>Translating to</Text>
+          <Text style={styles.langCompactValue}>
+            {userLang.toUpperCase()}
+          </Text>
+        </View>
+      )}
+
+      {/* Subtitle list */}
       <FlatList
         ref={flatListRef}
         style={styles.subtitleList}
+        contentContainerStyle={utterances.length === 0 ? styles.subtitleEmpty : undefined}
         data={utterances}
         keyExtractor={(_, index) => index.toString()}
         initialNumToRender={10}
         maxToRenderPerBatch={10}
         windowSize={7}
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
           <SubtitleOverlay
             speaker={item.speaker}
             originalText={item.original}
             translatedText={item.translated}
-            color={getSpeakerColor(item.speaker, speakerMapRef.current)}
+            speakerColor={getSpeakerColor(item.speaker, speakerMapRef.current)}
+            timestamp={new Date(item.timestamp).toLocaleTimeString([], {
+              hour: "numeric",
+              minute: "2-digit",
+            })}
+            isActive={isListening && index === utterances.length - 1}
           />
         )}
         onContentSizeChange={() =>
           flatListRef.current?.scrollToEnd({ animated: true })
         }
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyTitle}>Meeting Mode</Text>
-            <Text style={styles.emptyText}>
-              Start a session to get real-time translated subtitles from
-              multiple speakers
+          <View style={styles.emptyState}>
+            <View style={styles.emptyIcon}>
+              <Text style={styles.emptyIconText}>👥</Text>
+            </View>
+            <Text style={styles.emptyTitle}>Ready to translate</Text>
+            <Text style={styles.emptySubtext}>
+              Start a session to capture{"\n"}multi-speaker conversations
             </Text>
           </View>
         }
       />
 
       {/* Error */}
-      {error && (
-        <View style={styles.errorBar}>
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
-      )}
+      {error && <ErrorBanner message={error} />}
 
-      {/* Bottom Controls */}
+      {/* Bottom controls */}
       <View style={styles.controls}>
-        <TouchableOpacity
-          style={styles.exportButton}
-          onPress={handleExport}
-          disabled={isExporting || utterances.length === 0}
-        >
-          <Text
-            style={[
-              styles.exportText,
-              utterances.length === 0 && styles.disabledText,
-            ]}
-          >
-            {isExporting ? "Exporting..." : "Export & Share"}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.sessionButton,
-            isListening && styles.sessionButtonStop,
-          ]}
-          onPress={handleToggleSession}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.sessionButtonText}>
-            {isListening ? "Stop Session" : "Start Session"}
-          </Text>
-        </TouchableOpacity>
-
-        {utterances.length > 0 && !isListening && (
-          <TouchableOpacity style={styles.clearButton} onPress={handleClear}>
-            <Text style={styles.clearText}>Clear</Text>
-          </TouchableOpacity>
+        {isListening ? (
+          <View style={styles.controlRow}>
+            <TouchableOpacity
+              style={styles.secondaryBtn}
+              onPress={handleExport}
+              disabled={isExporting}
+            >
+              <Text style={styles.secondaryBtnText}>
+                {isExporting ? "..." : "Export"}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.stopBtn} onPress={handleToggleSession}>
+              <View style={styles.stopSquare} />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.secondaryBtn} onPress={handleExport}>
+              <Text style={styles.secondaryBtnText}>Share</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.controlColumn}>
+            {utterances.length > 0 && (
+              <View style={styles.controlRow}>
+                <TouchableOpacity style={styles.secondaryBtn} onPress={handleExport}>
+                  <Text style={styles.secondaryBtnText}>Export</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.secondaryBtn} onPress={handleExport}>
+                  <Text style={styles.secondaryBtnText}>Share</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+            <TouchableOpacity
+              style={styles.startBtn}
+              onPress={handleToggleSession}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.startBtnText}>
+                {utterances.length > 0 ? "New Session" : "Start Session"}
+              </Text>
+            </TouchableOpacity>
+            {utterances.length > 0 && (
+              <TouchableOpacity onPress={handleClear}>
+                <Text style={styles.clearText}>Clear transcript</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         )}
       </View>
     </SafeAreaView>
@@ -193,125 +222,60 @@ export default function MeetingScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#ffffff",
+  container: { flex: 1, backgroundColor: colors.bgPrimary },
+  header: {
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    paddingHorizontal: spacing.lg, paddingVertical: spacing.lg,
   },
-  topBar: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-end",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#e5e7eb",
+  title: {
+    fontFamily: fontFamily.displayMedium, fontSize: fontSize.heading, color: colors.textPrimary,
   },
-  timerContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fef2f2",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    gap: 6,
+  liveBadge: {
+    flexDirection: "row", alignItems: "center", gap: spacing.sm,
+    backgroundColor: "rgba(16, 185, 129, 0.15)", paddingHorizontal: spacing.md, paddingVertical: spacing.xs,
+    borderRadius: borderRadius.md,
   },
-  liveDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#ef4444",
+  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.success },
+  timerText: { color: colors.success, fontSize: 11, fontWeight: "600", fontVariant: ["tabular-nums"] },
+  langSection: { paddingHorizontal: spacing.lg, marginBottom: spacing.lg },
+  langLabel: {
+    fontSize: fontSize.label, color: colors.textMuted, textTransform: "uppercase",
+    letterSpacing: 1.5, fontWeight: "600", marginBottom: spacing.sm,
   },
-  timerText: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#ef4444",
-    fontVariant: ["tabular-nums"],
+  langCompact: {
+    flexDirection: "row", alignItems: "center", gap: spacing.sm,
+    paddingHorizontal: spacing.lg, paddingBottom: spacing.md,
   },
-  subtitleList: {
-    flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 8,
+  langCompactLabel: { color: colors.textMuted, fontSize: 11 },
+  langCompactValue: { color: colors.accentCyan, fontSize: 11, fontWeight: "600" },
+  subtitleList: { flex: 1, paddingHorizontal: spacing.lg },
+  subtitleEmpty: { flex: 1 },
+  emptyState: { flex: 1, alignItems: "center", justifyContent: "center" },
+  emptyIcon: {
+    width: 80, height: 80, borderRadius: borderRadius.full, backgroundColor: colors.bgSurface,
+    alignItems: "center", justifyContent: "center", marginBottom: spacing.lg,
+    borderWidth: 1, borderColor: colors.bgElevated,
   },
-  emptyContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingTop: 100,
-    paddingHorizontal: 32,
+  emptyIconText: { fontSize: 36, opacity: 0.3 },
+  emptyTitle: { fontSize: fontSize.body, fontWeight: "500", color: colors.textDim },
+  emptySubtext: { fontSize: 13, color: colors.bgElevated, textAlign: "center", marginTop: spacing.xs },
+  controls: { paddingHorizontal: spacing.lg, paddingVertical: spacing.md, paddingBottom: spacing.xl, borderTopWidth: 1, borderTopColor: colors.bgSurface },
+  controlRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.md },
+  controlColumn: { alignItems: "center", gap: spacing.md },
+  secondaryBtn: {
+    flex: 1, backgroundColor: colors.bgSurface, borderRadius: borderRadius.md,
+    paddingVertical: spacing.md, alignItems: "center", borderWidth: 1, borderColor: colors.bgElevated,
   },
-  emptyTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#1f2937",
-    marginBottom: 8,
+  secondaryBtnText: { color: colors.textPrimary, fontSize: 13, fontWeight: "500" },
+  stopBtn: {
+    width: 52, height: 52, borderRadius: borderRadius.full, backgroundColor: colors.error,
+    alignItems: "center", justifyContent: "center", ...shadows.glowError,
   },
-  emptyText: {
-    fontSize: 16,
-    color: "#9ca3af",
-    textAlign: "center",
-    lineHeight: 22,
+  stopSquare: { width: 18, height: 18, borderRadius: 3, backgroundColor: colors.white },
+  startBtn: {
+    width: "100%", backgroundColor: colors.accentBlue, borderRadius: borderRadius.lg,
+    paddingVertical: spacing.lg, alignItems: "center", ...shadows.glowMd,
   },
-  errorBar: {
-    backgroundColor: "#fef2f2",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  errorText: {
-    color: "#dc2626",
-    fontSize: 14,
-    textAlign: "center",
-  },
-  controls: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    paddingBottom: 24,
-    borderTopWidth: 1,
-    borderTopColor: "#e5e7eb",
-    gap: 12,
-  },
-  sessionButton: {
-    backgroundColor: "#3b82f6",
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    borderRadius: 28,
-    elevation: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-  },
-  sessionButtonStop: {
-    backgroundColor: "#ef4444",
-  },
-  sessionButtonText: {
-    color: "#ffffff",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  exportButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderRadius: 28,
-    backgroundColor: "#f3f4f6",
-  },
-  exportText: {
-    color: "#1f2937",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  disabledText: {
-    color: "#9ca3af",
-  },
-  clearButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderRadius: 28,
-    backgroundColor: "#f3f4f6",
-  },
-  clearText: {
-    color: "#6b7280",
-    fontSize: 14,
-  },
+  startBtnText: { color: colors.white, fontSize: 16, fontWeight: "700" },
+  clearText: { color: colors.textMuted, fontSize: 13, marginTop: spacing.xs },
 });
