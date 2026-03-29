@@ -1,14 +1,17 @@
+import { useState, useMemo } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
   Modal,
   FlatList,
+  TextInput,
   StyleSheet,
 } from "react-native";
-import { useState } from "react";
+import { ChevronDown, X, Search, Check } from "lucide-react-native";
 import { LanguageCode } from "../types";
 import { SUPPORTED_LANGUAGES, Language } from "../constants/languages";
+import { colors, spacing, borderRadius, fontSize } from "../theme";
 
 interface LanguagePickerProps {
   selectedLang: LanguageCode;
@@ -22,14 +25,26 @@ export function LanguagePicker({
   label,
 }: LanguagePickerProps) {
   const [modalVisible, setModalVisible] = useState(false);
+  const [search, setSearch] = useState("");
 
   const selectedLanguage = SUPPORTED_LANGUAGES.find(
-    (l) => l.code === selectedLang
+    (l) => l.code === selectedLang,
   );
+
+  const filtered = useMemo(() => {
+    if (!search) return SUPPORTED_LANGUAGES;
+    const q = search.toLowerCase();
+    return SUPPORTED_LANGUAGES.filter(
+      (l) =>
+        l.name.toLowerCase().includes(q) ||
+        l.nativeName.toLowerCase().includes(q),
+    );
+  }, [search]);
 
   const handleSelect = (lang: Language) => {
     onSelect(lang.code);
     setModalVisible(false);
+    setSearch("");
   };
 
   return (
@@ -40,43 +55,70 @@ export function LanguagePicker({
         onPress={() => setModalVisible(true)}
       >
         <Text style={styles.buttonText}>
-          {selectedLanguage?.nativeName || selectedLang}
+          {selectedLanguage?.name || selectedLang}
         </Text>
-        <Text style={styles.arrow}>▼</Text>
+        <ChevronDown size={14} color={colors.textMuted} strokeWidth={2} />
       </TouchableOpacity>
 
       <Modal
         visible={modalVisible}
         animationType="slide"
-        transparent={true}
-        onRequestClose={() => setModalVisible(false)}
+        transparent
+        onRequestClose={() => { setModalVisible(false); setSearch(""); }}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => { setModalVisible(false); setSearch(""); }}
+        >
+          <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Language</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Text style={styles.closeButton}>✕</Text>
+              <TouchableOpacity
+                style={styles.closeCircle}
+                onPress={() => { setModalVisible(false); setSearch(""); }}
+              >
+                <X size={14} color={colors.textSubtle} strokeWidth={2.5} />
               </TouchableOpacity>
             </View>
+
+            <View style={styles.searchContainer}>
+              <View style={styles.searchBar}>
+                <Search size={14} color={colors.textDim} strokeWidth={2} />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search languages..."
+                  placeholderTextColor={colors.textDim}
+                  value={search}
+                  onChangeText={setSearch}
+                  autoCorrect={false}
+                />
+              </View>
+            </View>
+
             <FlatList
-              data={SUPPORTED_LANGUAGES}
+              data={filtered}
               keyExtractor={(item) => item.code}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[
-                    styles.languageItem,
-                    item.code === selectedLang && styles.selectedItem,
-                  ]}
-                  onPress={() => handleSelect(item)}
-                >
-                  <Text style={styles.languageName}>{item.name}</Text>
-                  <Text style={styles.nativeName}>{item.nativeName}</Text>
-                </TouchableOpacity>
-              )}
+              renderItem={({ item }) => {
+                const isSelected = item.code === selectedLang;
+                return (
+                  <TouchableOpacity
+                    style={[styles.langItem, isSelected && styles.langItemSelected]}
+                    onPress={() => handleSelect(item)}
+                  >
+                    <View>
+                      <Text style={styles.langName}>{item.name}</Text>
+                      <Text style={styles.langNative}>{item.nativeName}</Text>
+                    </View>
+                    {isSelected && (
+                      <Check size={16} color={colors.accentBlue} strokeWidth={2.5} />
+                    )}
+                  </TouchableOpacity>
+                );
+              }}
             />
           </View>
-        </View>
+        </TouchableOpacity>
       </Modal>
     </View>
   );
@@ -84,41 +126,40 @@ export function LanguagePicker({
 
 const styles = StyleSheet.create({
   label: {
-    fontSize: 12,
-    color: "#6b7280",
-    marginBottom: 4,
+    fontSize: fontSize.label,
+    color: colors.textMuted,
+    marginBottom: spacing.xs,
     textTransform: "uppercase",
     fontWeight: "600",
+    letterSpacing: 1.5,
   },
   button: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: "#f3f4f6",
-    borderRadius: 12,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.bgSurface,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.bgElevated,
     minWidth: 130,
+    gap: spacing.sm,
   },
   buttonText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "600",
-    color: "#1f2937",
-  },
-  arrow: {
-    fontSize: 12,
-    color: "#6b7280",
-    marginLeft: 8,
+    color: colors.textPrimary,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: colors.bgOverlay,
     justifyContent: "flex-end",
   },
   modalContent: {
-    backgroundColor: "#ffffff",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    backgroundColor: colors.bgSurface,
+    borderTopLeftRadius: borderRadius.xl,
+    borderTopRightRadius: borderRadius.xl,
     maxHeight: "70%",
     paddingBottom: 34,
   },
@@ -126,38 +167,63 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 16,
+    padding: spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: "#e5e7eb",
+    borderBottomColor: colors.bgPrimary,
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#1f2937",
+    fontSize: fontSize.body,
+    fontWeight: "600",
+    color: colors.textPrimary,
   },
-  closeButton: {
-    fontSize: 20,
-    color: "#6b7280",
-    padding: 4,
+  closeCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.bgElevated,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  languageItem: {
+  searchContainer: {
+    padding: spacing.md,
+  },
+  searchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.bgPrimary,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.bgElevated,
+    gap: spacing.sm,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+    color: colors.textPrimary,
+    padding: 0,
+  },
+  langItem: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f3f4f6",
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    marginHorizontal: spacing.xs,
+    borderRadius: borderRadius.sm,
   },
-  selectedItem: {
-    backgroundColor: "#eef2ff",
+  langItemSelected: {
+    backgroundColor: "rgba(59, 130, 246, 0.1)",
   },
-  languageName: {
-    fontSize: 16,
-    color: "#1f2937",
-  },
-  nativeName: {
+  langName: {
     fontSize: 14,
-    color: "#6b7280",
+    fontWeight: "500",
+    color: colors.textPrimary,
+  },
+  langNative: {
+    fontSize: fontSize.caption,
+    color: colors.textDim,
+    marginTop: 1,
   },
 });
