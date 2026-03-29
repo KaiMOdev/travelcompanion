@@ -19,6 +19,9 @@ export async function translateImageWithGemini(
   const ai = new GoogleGenAI({ apiKey });
   const targetName = getLanguageNameForPrompt(targetLang);
 
+  // Strip data URI prefix if present (e.g., "data:image/png;base64,...")
+  const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, "");
+
   const response = await ai.models.generateContent({
     model: "gemini-2.0-flash",
     contents: [
@@ -28,7 +31,7 @@ export async function translateImageWithGemini(
           {
             inlineData: {
               mimeType: "image/jpeg",
-              data: imageBase64,
+              data: cleanBase64,
             },
           },
           {

@@ -26,6 +26,59 @@ export function useAudioStream(callbacks: AudioStreamCallbacks) {
     sendAudio: (base64Audio: string) => void;
     stop: () => void;
   } | null>(null);
+  const chunkIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const sendCurrentChunk = useCallback(async () => {
+    if (!recordingRef.current || !sessionRef.current) return;
+
+    try {
+      const currentRecording = recordingRef.current;
+      await currentRecording.stopAndUnloadAsync();
+      const uri = currentRecording.getURI();
+
+      if (uri) {
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64 = (reader.result as string).split(",")[1];
+          if (base64 && sessionRef.current) {
+            sessionRef.current.sendAudio(base64);
+          }
+        };
+        reader.readAsDataURL(blob);
+      }
+
+      // Start a new recording chunk
+      const newRecording = new Audio.Recording();
+      await newRecording.prepareToRecordAsync({
+        android: {
+          extension: ".wav",
+          outputFormat: 2,
+          audioEncoder: 1,
+          sampleRate: 16000,
+          numberOfChannels: 1,
+          bitRate: 256000,
+        },
+        ios: {
+          extension: ".wav",
+          outputFormat: "linearPCM" as any,
+          audioQuality: 127,
+          sampleRate: 16000,
+          numberOfChannels: 1,
+          bitRate: 256000,
+          linearPCMBitDepth: 16,
+          linearPCMIsBigEndian: false,
+          linearPCMIsFloat: false,
+        },
+        web: {},
+      });
+      recordingRef.current = newRecording;
+      await newRecording.startAsync();
+    } catch (e) {
+      console.warn("Audio chunk error:", e);
+    }
+  }, []);
 
   const startRecording = useCallback(
     async (sourceLang: LanguageCode, targetLang: LanguageCode) => {
@@ -43,6 +96,7 @@ export function useAudioStream(callbacks: AudioStreamCallbacks) {
           playsInSilentModeIOS: true,
         });
 
+        // Start translation session with backend
         const session = startTranslationSession(sourceLang, targetLang, {
           onTranslatedAudio: callbacks.onTranslatedAudio,
           onTranslatedText: callbacks.onTranslatedText,
@@ -54,6 +108,7 @@ export function useAudioStream(callbacks: AudioStreamCallbacks) {
         });
         sessionRef.current = session;
 
+        // Start first recording chunk
         const recording = new Audio.Recording();
         await recording.prepareToRecordAsync({
           android: {
@@ -80,6 +135,12 @@ export function useAudioStream(callbacks: AudioStreamCallbacks) {
 
         recordingRef.current = recording;
         await recording.startAsync();
+
+        // Stream audio chunks every 1 second
+        chunkIntervalRef.current = setInterval(() => {
+          sendCurrentChunk();
+        }, 1000);
+
         setState({ isRecording: true, error: null });
       } catch (error: any) {
         setState({
@@ -89,11 +150,18 @@ export function useAudioStream(callbacks: AudioStreamCallbacks) {
         callbacks.onError(error);
       }
     },
-    [callbacks]
+    [callbacks, sendCurrentChunk]
   );
 
   const stopRecording = useCallback(async () => {
     try {
+      // Stop chunk streaming
+      if (chunkIntervalRef.current) {
+        clearInterval(chunkIntervalRef.current);
+        chunkIntervalRef.current = null;
+      }
+
+      // Send final chunk
       const recording = recordingRef.current;
       if (recording) {
         await recording.stopAndUnloadAsync();
@@ -114,6 +182,7 @@ export function useAudioStream(callbacks: AudioStreamCallbacks) {
         }
       }
 
+      // Stop translation session
       if (sessionRef.current) {
         sessionRef.current.stop();
         sessionRef.current = null;
