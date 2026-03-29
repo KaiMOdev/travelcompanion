@@ -13,15 +13,18 @@ export class GeminiLiveSession {
   private sourceLang: string;
   private targetLang: string;
   private callbacks: GeminiSessionCallbacks;
+  private locationHints?: string;
 
   constructor(
     sourceLang: string,
     targetLang: string,
-    callbacks: GeminiSessionCallbacks
+    callbacks: GeminiSessionCallbacks,
+    locationHints?: string
   ) {
     this.sourceLang = sourceLang;
     this.targetLang = targetLang;
     this.callbacks = callbacks;
+    this.locationHints = locationHints;
   }
 
   async connect(): Promise<void> {
@@ -34,11 +37,15 @@ export class GeminiLiveSession {
     const sourceName = this.sourceLang === "auto" ? "auto" : getLanguageNameForPrompt(this.sourceLang);
     const targetName = getLanguageNameForPrompt(this.targetLang);
 
+    const locationContext = this.locationHints
+      ? ` ${this.locationHints} Use this location context to adapt phrasing, formality, and cultural references appropriately.`
+      : "";
+
     let systemPrompt: string;
     if (this.sourceLang === "auto") {
-      systemPrompt = `You are a real-time meeting translator. Listen to continuous audio. For each utterance: detect the speaker (label as Speaker 1, Speaker 2, etc. based on voice characteristics), detect the language they are speaking, provide the original text, and translate to ${targetName}. Respond with the translation spoken in ${targetName}.`;
+      systemPrompt = `You are a real-time meeting translator. Listen to continuous audio. For each utterance: detect the speaker (label as Speaker 1, Speaker 2, etc. based on voice characteristics), detect the language they are speaking, provide the original text, and translate to ${targetName}. Respond with the translation spoken in ${targetName}.${locationContext}`;
     } else {
-      systemPrompt = `You are a real-time voice translator. The user will speak in ${sourceName}. Translate everything they say into ${targetName}. Speak the translation naturally. Do not add commentary or explanations — only translate.`;
+      systemPrompt = `You are a real-time voice translator. The user will speak in ${sourceName}. Translate everything they say into ${targetName}. Speak the translation naturally. Do not add commentary or explanations — only translate.${locationContext}`;
     }
 
     this.session = await ai.live.connect({

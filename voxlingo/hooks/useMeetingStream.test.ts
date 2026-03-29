@@ -26,6 +26,17 @@ jest.mock("../services/gemini", () => ({
   getSocket: jest.fn().mockImplementation(() => mockSocket),
 }));
 
+jest.mock("react-native", () => {
+  const actual = jest.requireActual("react-native");
+  return {
+    ...actual,
+    AppState: {
+      addEventListener: jest.fn().mockReturnValue({ remove: jest.fn() }),
+      currentState: "active",
+    },
+  };
+});
+
 describe("useMeetingStream", () => {
   beforeEach(() => {
     jest.clearAllMocks();

@@ -22,6 +22,22 @@ jest.mock("../services/gemini", () => ({
   }),
 }));
 
+jest.mock("../services/maps", () => ({
+  getLocationContext: jest.fn().mockResolvedValue(null),
+  formatLocationForPrompt: jest.fn().mockReturnValue(""),
+}));
+
+jest.mock("react-native", () => {
+  const actual = jest.requireActual("react-native");
+  return {
+    ...actual,
+    AppState: {
+      addEventListener: jest.fn().mockReturnValue({ remove: jest.fn() }),
+      currentState: "active",
+    },
+  };
+});
+
 describe("useAudioStream", () => {
   beforeEach(() => {
     jest.clearAllMocks();

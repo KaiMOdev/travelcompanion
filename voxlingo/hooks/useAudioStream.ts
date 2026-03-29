@@ -1,7 +1,9 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { AppState } from "react-native";
 import { Audio } from "expo-av";
 import { LanguageCode } from "../types";
 import { startTranslationSession } from "../services/gemini";
+import { getLocationContext, formatLocationForPrompt } from "../services/maps";
 
 export interface AudioStreamCallbacks {
   onTranslatedAudio: (audioBase64: string) => void;
@@ -99,6 +101,12 @@ export function useAudioStream(callbacks: AudioStreamCallbacks) {
           playsInSilentModeIOS: true,
         });
 
+        // Fetch location context for culturally-aware translations
+        const locationContext = await getLocationContext().catch(() => null);
+        const locationHints = locationContext
+          ? formatLocationForPrompt(locationContext)
+          : undefined;
+
         // Start translation session with backend
         const session = startTranslationSession(sourceLang, targetLang, {
           onTranslatedAudio: callbacks.onTranslatedAudio,
@@ -108,7 +116,7 @@ export function useAudioStream(callbacks: AudioStreamCallbacks) {
             console.log("Translation session ready");
           },
           onError: callbacks.onError,
-        });
+        }, { locationHints });
         sessionRef.current = session;
 
         // Start first recording chunk
@@ -207,6 +215,16 @@ export function useAudioStream(callbacks: AudioStreamCallbacks) {
       });
     }
   }, []);
+
+  // Stop recording when app goes to background to save battery
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "background" && state.isRecording) {
+        stopRecording();
+      }
+    });
+    return () => subscription.remove();
+  }, [state.isRecording, stopRecording]);
 
   return {
     isRecording: state.isRecording,

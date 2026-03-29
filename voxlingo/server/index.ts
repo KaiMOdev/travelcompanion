@@ -77,7 +77,7 @@ io.on("connection", (socket) => {
 
   socket.on(
     "start-translation",
-    async (data: { sourceLang: string; targetLang: string }) => {
+    async (data: { sourceLang: string; targetLang: string; locationHints?: string }) => {
       try {
         const existing = activeSessions.get(socket.id);
         if (existing) {
@@ -101,7 +101,8 @@ io.on("connection", (socket) => {
             onError: (error: Error) => {
               socket.emit("translation-error", { message: error.message });
             },
-          }
+          },
+          data.locationHints
         );
 
         await session.connect();
@@ -194,5 +195,27 @@ const PORT = process.env.PORT || 3001;
 httpServer.listen(PORT, () => {
   console.log(`VoxLingo server running on port ${PORT}`);
 });
+
+// Graceful shutdown — clean up all active Gemini sessions
+function gracefulShutdown(signal: string) {
+  console.log(`${signal} received. Shutting down gracefully...`);
+  for (const [socketId, session] of activeSessions) {
+    session.disconnect();
+    activeSessions.delete(socketId);
+  }
+  sessionTimestamps.clear();
+  socketEventCounts.clear();
+  io.close(() => {
+    httpServer.close(() => {
+      console.log("Server shut down cleanly.");
+      process.exit(0);
+    });
+  });
+  // Force exit after 10 seconds if cleanup hangs
+  setTimeout(() => process.exit(1), 10_000);
+}
+
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 
 export { app, io };

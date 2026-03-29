@@ -31,7 +31,8 @@ export function getSocket(): Socket {
 export function startTranslationSession(
   sourceLang: LanguageCode,
   targetLang: LanguageCode,
-  callbacks: GeminiStreamCallbacks
+  callbacks: GeminiStreamCallbacks,
+  options?: { locationHints?: string }
 ): { sendAudio: (base64Audio: string) => void; stop: () => void } {
   const sock = getSocket();
 
@@ -62,7 +63,11 @@ export function startTranslationSession(
   });
 
   const emitStart = () => {
-    sock.emit("start-translation", { sourceLang, targetLang });
+    sock.emit("start-translation", {
+      sourceLang,
+      targetLang,
+      locationHints: options?.locationHints,
+    });
   };
 
   if (sock.connected) {

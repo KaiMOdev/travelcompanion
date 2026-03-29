@@ -1,4 +1,5 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { AppState } from "react-native";
 import { Audio } from "expo-av";
 import { LanguageCode } from "../types";
 import { getSocket } from "../services/gemini";
@@ -214,6 +215,16 @@ export function useMeetingStream(callbacks: MeetingStreamCallbacks) {
       setError(err.message || "Failed to stop meeting");
     }
   }, []);
+
+  // Stop listening when app goes to background to save battery
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "background" && isListening) {
+        stopListening();
+      }
+    });
+    return () => subscription.remove();
+  }, [isListening, stopListening]);
 
   return {
     isListening,

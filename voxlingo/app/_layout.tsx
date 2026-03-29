@@ -7,6 +7,7 @@ import {
   SpaceGrotesk_700Bold,
 } from "@expo-google-fonts/space-grotesk";
 import { colors } from "../theme";
+import { ErrorBoundary } from "../components/ErrorBoundary";
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
@@ -23,7 +24,7 @@ export default function RootLayout() {
   }
 
   return (
-    <>
+    <ErrorBoundary>
       <StatusBar style="light" />
       <Stack
         screenOptions={{
@@ -41,6 +42,6 @@ export default function RootLayout() {
           }}
         />
       </Stack>
-    </>
+    </ErrorBoundary>
   );
 }
