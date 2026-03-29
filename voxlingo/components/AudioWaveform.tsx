@@ -11,27 +11,32 @@ export function AudioWaveform({ isActive }: AudioWaveformProps) {
   const animations = useRef(
     Array.from({ length: BAR_COUNT }, () => new Animated.Value(0.3))
   ).current;
+  const loopsRef = useRef<Animated.CompositeAnimation[]>([]);
 
   useEffect(() => {
+    // Stop any existing loops before starting new ones
+    loopsRef.current.forEach((loop) => loop.stop());
+    loopsRef.current = [];
+
     if (isActive) {
-      const animateBar = (index: number) => {
-        Animated.loop(
+      animations.forEach((anim, index) => {
+        const loop = Animated.loop(
           Animated.sequence([
-            Animated.timing(animations[index], {
+            Animated.timing(anim, {
               toValue: 0.4 + Math.random() * 0.6,
               duration: 200 + Math.random() * 300,
               useNativeDriver: false,
             }),
-            Animated.timing(animations[index], {
+            Animated.timing(anim, {
               toValue: 0.2 + Math.random() * 0.2,
               duration: 200 + Math.random() * 300,
               useNativeDriver: false,
             }),
           ])
-        ).start();
-      };
-
-      animations.forEach((_, i) => animateBar(i));
+        );
+        loopsRef.current.push(loop);
+        loop.start();
+      });
     } else {
       animations.forEach((anim) => {
         anim.stopAnimation();
@@ -44,6 +49,8 @@ export function AudioWaveform({ isActive }: AudioWaveformProps) {
     }
 
     return () => {
+      loopsRef.current.forEach((loop) => loop.stop());
+      loopsRef.current = [];
       animations.forEach((anim) => anim.stopAnimation());
     };
   }, [isActive, animations]);

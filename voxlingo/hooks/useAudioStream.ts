@@ -46,6 +46,9 @@ export function useAudioStream(callbacks: AudioStreamCallbacks) {
             sessionRef.current.sendAudio(base64);
           }
         };
+        reader.onerror = () => {
+          console.warn("FileReader error reading audio chunk");
+        };
         reader.readAsDataURL(blob);
       }
 
@@ -177,6 +180,9 @@ export function useAudioStream(callbacks: AudioStreamCallbacks) {
             if (base64 && sessionRef.current) {
               sessionRef.current.sendAudio(base64);
             }
+          };
+          reader.onerror = () => {
+            console.warn("FileReader error reading final audio chunk");
           };
           reader.readAsDataURL(blob);
         }

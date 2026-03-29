@@ -104,6 +104,7 @@ export function useMeetingStream(callbacks: MeetingStreamCallbacks) {
         recordingRef.current = recording;
         await recording.startAsync();
 
+        // Set intervals AFTER recording starts successfully to avoid leaks on error
         chunkIntervalRef.current = setInterval(async () => {
           if (!recordingRef.current) return;
           try {
@@ -120,6 +121,9 @@ export function useMeetingStream(callbacks: MeetingStreamCallbacks) {
                 if (base64) {
                   socket.emit("audio-stream", { audio: base64 });
                 }
+              };
+              reader.onerror = () => {
+                console.warn("FileReader error reading meeting audio chunk");
               };
               reader.readAsDataURL(blob);
             }
@@ -161,6 +165,15 @@ export function useMeetingStream(callbacks: MeetingStreamCallbacks) {
 
         setIsListening(true);
       } catch (err: any) {
+        // Clean up any intervals that may have been set before the error
+        if (chunkIntervalRef.current) {
+          clearInterval(chunkIntervalRef.current);
+          chunkIntervalRef.current = null;
+        }
+        if (timerRef.current) {
+          clearInterval(timerRef.current);
+          timerRef.current = null;
+        }
         setError(err.message || "Failed to start meeting");
         callbacks.onError(err);
       }

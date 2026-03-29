@@ -32,10 +32,6 @@ export function startTranslationSession(
 ): { sendAudio: (base64Audio: string) => void; stop: () => void } {
   const sock = getSocket();
 
-  if (!sock.connected) {
-    sock.connect();
-  }
-
   sock.off("translated-audio");
   sock.off("translated-text");
   sock.off("input-text");
@@ -62,7 +58,16 @@ export function startTranslationSession(
     callbacks.onError(new Error(data.message));
   });
 
-  sock.emit("start-translation", { sourceLang, targetLang });
+  const emitStart = () => {
+    sock.emit("start-translation", { sourceLang, targetLang });
+  };
+
+  if (sock.connected) {
+    emitStart();
+  } else {
+    sock.once("connect", emitStart);
+    sock.connect();
+  }
 
   return {
     sendAudio: (base64Audio: string) => {

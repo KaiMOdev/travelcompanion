@@ -29,6 +29,7 @@ export default function CameraScreen() {
   const [targetLang, setTargetLang] = useState<LanguageCode>(DEFAULT_TARGET_LANG);
   const [scanMode, setScanMode] = useState<ScanMode>("photo");
   const [isProcessing, setIsProcessing] = useState(false);
+  const isProcessingRef = useRef(false);
   const [scans, setScans] = useState<ScanResult[]>([]);
   const [error, setError] = useState<string | null>(null);
   const cameraRef = useRef<CameraView>(null);
@@ -44,9 +45,10 @@ export default function CameraScreen() {
   }, []);
 
   const captureAndTranslate = useCallback(async () => {
-    if (!cameraRef.current || isProcessing) return;
+    if (!cameraRef.current || isProcessingRef.current) return;
 
     try {
+      isProcessingRef.current = true;
       setIsProcessing(true);
       setError(null);
 
@@ -74,9 +76,10 @@ export default function CameraScreen() {
     } catch (err: any) {
       setError(err.message || "Translation failed");
     } finally {
+      isProcessingRef.current = false;
       setIsProcessing(false);
     }
-  }, [targetLang, isProcessing]);
+  }, [targetLang]);
 
   const toggleLiveScan = useCallback(() => {
     if (liveScanInterval.current) {
