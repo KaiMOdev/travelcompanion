@@ -1,73 +1,69 @@
-import { View, StyleSheet, Animated } from "react-native";
-import { useEffect, useRef } from "react";
+import { View, StyleSheet } from "react-native";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withSequence,
+  withTiming,
+  withDelay,
+  Easing,
+} from "react-native-reanimated";
+import { useEffect } from "react";
+import { colors, spacing } from "../theme";
 
 interface AudioWaveformProps {
   isActive: boolean;
 }
 
-const BAR_COUNT = 5;
+const BAR_COUNT = 12;
 
-export function AudioWaveform({ isActive }: AudioWaveformProps) {
-  const animations = useRef(
-    Array.from({ length: BAR_COUNT }, () => new Animated.Value(0.3))
-  ).current;
-  const loopsRef = useRef<Animated.CompositeAnimation[]>([]);
+function WaveBar({ index, isActive }: { index: number; isActive: boolean }) {
+  const scale = useSharedValue(0.3);
 
   useEffect(() => {
-    // Stop any existing loops before starting new ones
-    loopsRef.current.forEach((loop) => loop.stop());
-    loopsRef.current = [];
-
     if (isActive) {
-      animations.forEach((anim, index) => {
-        const loop = Animated.loop(
-          Animated.sequence([
-            Animated.timing(anim, {
-              toValue: 0.4 + Math.random() * 0.6,
-              duration: 200 + Math.random() * 300,
-              useNativeDriver: false,
-            }),
-            Animated.timing(anim, {
-              toValue: 0.2 + Math.random() * 0.2,
-              duration: 200 + Math.random() * 300,
-              useNativeDriver: false,
-            }),
-          ])
-        );
-        loopsRef.current.push(loop);
-        loop.start();
-      });
-    } else {
-      animations.forEach((anim) => {
-        anim.stopAnimation();
-        Animated.timing(anim, {
-          toValue: 0.3,
-          duration: 200,
-          useNativeDriver: false,
-        }).start();
-      });
-    }
+      const minHeight = 0.2 + Math.random() * 0.2;
+      const maxHeight = 0.5 + Math.random() * 0.5;
+      const duration = 200 + Math.random() * 300;
 
-    return () => {
-      loopsRef.current.forEach((loop) => loop.stop());
-      loopsRef.current = [];
-      animations.forEach((anim) => anim.stopAnimation());
-    };
-  }, [isActive, animations]);
+      scale.value = withRepeat(
+        withDelay(
+          index * 50,
+          withSequence(
+            withTiming(maxHeight, { duration, easing: Easing.out(Easing.ease) }),
+            withTiming(minHeight, { duration, easing: Easing.in(Easing.ease) }),
+          ),
+        ),
+        -1,
+        true,
+      );
+    } else {
+      scale.value = withTiming(0.3, { duration: 200 });
+    }
+  }, [isActive, index, scale]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scaleY: scale.value }],
+  }));
+
+  const isEven = index % 2 === 0;
 
   return (
+    <Animated.View
+      style={[
+        styles.bar,
+        { backgroundColor: isActive ? (isEven ? colors.accentBlue : colors.accentCyan) : colors.bgElevated },
+        animatedStyle,
+      ]}
+    />
+  );
+}
+
+export function AudioWaveform({ isActive }: AudioWaveformProps) {
+  return (
     <View style={styles.container}>
-      {animations.map((anim, index) => (
-        <Animated.View
-          key={index}
-          style={[
-            styles.bar,
-            isActive && styles.activeBar,
-            {
-              transform: [{ scaleY: anim }],
-            },
-          ]}
-        />
+      {Array.from({ length: BAR_COUNT }, (_, i) => (
+        <WaveBar key={i} index={i} isActive={isActive} />
       ))}
     </View>
   );
@@ -78,16 +74,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    height: 40,
-    gap: 4,
+    height: 80,
+    gap: spacing.xs,
   },
   bar: {
     width: 4,
-    height: 40,
-    backgroundColor: "#d1d5db",
+    height: 80,
     borderRadius: 2,
-  },
-  activeBar: {
-    backgroundColor: "#3b82f6",
   },
 });
