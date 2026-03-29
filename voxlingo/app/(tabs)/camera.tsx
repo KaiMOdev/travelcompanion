@@ -235,6 +235,9 @@ export default function CameraScreen() {
           <FlatList
             data={scans}
             keyExtractor={(item) => item.id}
+            initialNumToRender={5}
+            maxToRenderPerBatch={5}
+            windowSize={5}
             renderItem={({ item }) => (
               <View style={styles.scanItem}>
                 {item.imageUri && (

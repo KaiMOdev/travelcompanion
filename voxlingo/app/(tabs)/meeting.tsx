@@ -120,6 +120,9 @@ export default function MeetingScreen() {
         style={styles.subtitleList}
         data={utterances}
         keyExtractor={(_, index) => index.toString()}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={7}
         renderItem={({ item }) => (
           <SubtitleOverlay
             speaker={item.speaker}

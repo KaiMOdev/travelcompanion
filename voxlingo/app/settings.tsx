@@ -7,6 +7,7 @@ import {
   SafeAreaView,
   ScrollView,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { LanguageCode, Translation, WordListItem } from "../types";
 import {
@@ -30,6 +31,8 @@ export default function SettingsScreen() {
   const [history, setHistory] = useState<Translation[]>([]);
   const [wordList, setWordList] = useState<WordListItem[]>([]);
   const [activeTab, setActiveTab] = useState<"history" | "words">("history");
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     const user = getCurrentUser();
@@ -42,6 +45,8 @@ export default function SettingsScreen() {
 
   const loadUserData = async (uid: string) => {
     try {
+      setIsLoading(true);
+      setLoadError(null);
       const [hist, words] = await Promise.all([
         getTranslationHistory(uid),
         getWordList(uid),
@@ -49,7 +54,9 @@ export default function SettingsScreen() {
       setHistory(hist);
       setWordList(words);
     } catch {
-      // Offline or no data yet
+      setLoadError("Could not load data. You may be offline.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -128,7 +135,18 @@ export default function SettingsScreen() {
             </TouchableOpacity>
           </View>
 
-          {activeTab === "history" && (
+          {isLoading && (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color="#3b82f6" />
+              <Text style={styles.loadingText}>Loading...</Text>
+            </View>
+          )}
+
+          {loadError && (
+            <Text style={styles.errorText}>{loadError}</Text>
+          )}
+
+          {!isLoading && activeTab === "history" && (
             <View>
               {history.length === 0 ? (
                 <Text style={styles.emptyText}>No translation history yet</Text>
@@ -144,7 +162,7 @@ export default function SettingsScreen() {
             </View>
           )}
 
-          {activeTab === "words" && (
+          {!isLoading && activeTab === "words" && (
             <View>
               {wordList.length === 0 ? (
                 <Text style={styles.emptyText}>No saved words yet</Text>
@@ -182,6 +200,9 @@ const styles = StyleSheet.create({
   tabActive: { backgroundColor: "#3b82f6" },
   tabText: { fontSize: 14, fontWeight: "600", color: "#6b7280" },
   tabTextActive: { color: "#ffffff" },
+  loadingContainer: { flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 16, gap: 8 },
+  loadingText: { color: "#6b7280", fontSize: 14 },
+  errorText: { color: "#dc2626", fontSize: 14, textAlign: "center", paddingVertical: 12 },
   emptyText: { color: "#9ca3af", fontSize: 14, textAlign: "center", paddingVertical: 16 },
   historyItem: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#f3f4f6" },
   historyOriginal: { fontSize: 14, color: "#9ca3af" },

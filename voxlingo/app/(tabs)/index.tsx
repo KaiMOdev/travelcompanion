@@ -124,6 +124,9 @@ export default function TravelScreen() {
         style={styles.chatContainer}
         data={translations}
         keyExtractor={(item) => item.id}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={7}
         renderItem={({ item }) => (
           <View>
             {item.originalText !== "" && (

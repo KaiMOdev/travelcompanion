@@ -9,9 +9,8 @@ export interface GeminiStreamCallbacks {
   onError: (error: Error) => void;
 }
 
-const BACKEND_URL = __DEV__
-  ? "http://localhost:3001"
-  : "https://your-production-server.com";
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL
+  || (__DEV__ ? "http://localhost:3001" : "https://your-production-server.com");
 
 let socket: Socket | null = null;
 

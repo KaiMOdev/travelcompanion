@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useReducer, useCallback } from "react";
 import { Translation, LanguageCode } from "../types";
 
 export interface TranslationState {
@@ -7,33 +7,49 @@ export interface TranslationState {
   error: string | null;
 }
 
+type TranslationAction =
+  | { type: "ADD_TRANSLATION"; translation: Translation }
+  | { type: "CLEAR" }
+  | { type: "SET_TRANSLATING"; isTranslating: boolean }
+  | { type: "SET_ERROR"; error: string | null };
+
+function translationReducer(state: TranslationState, action: TranslationAction): TranslationState {
+  switch (action.type) {
+    case "ADD_TRANSLATION":
+      return { ...state, translations: [...state.translations, action.translation] };
+    case "CLEAR":
+      return { translations: [], isTranslating: false, error: null };
+    case "SET_TRANSLATING":
+      return { ...state, isTranslating: action.isTranslating };
+    case "SET_ERROR":
+      return { ...state, error: action.error };
+  }
+}
+
 export function useTranslation(
   _sourceLang: LanguageCode,
   _targetLang: LanguageCode
 ) {
-  const [state, setState] = useState<TranslationState>({
+  const [state, dispatch] = useReducer(translationReducer, {
     translations: [],
     isTranslating: false,
     error: null,
   });
 
   const addTranslation = useCallback((translation: Translation) => {
-    setState((prev) => ({
-      ...prev,
-      translations: [...prev.translations, translation],
-    }));
+    dispatch({ type: "ADD_TRANSLATION", translation });
   }, []);
 
   const clearTranslations = useCallback(() => {
-    setState({ translations: [], isTranslating: false, error: null });
+    dispatch({ type: "CLEAR" });
   }, []);
 
   const setTranslating = useCallback((isTranslating: boolean) => {
-    setState((prev) => ({ ...prev, isTranslating }));
+    dispatch({ type: "SET_TRANSLATING", isTranslating });
   }, []);
 
   const setError = useCallback((error: string | null) => {
-    setState((prev) => ({ ...prev, error }));
+    dispatch({ type: "SET_ERROR", error });
   }, []);
 
   return {
