@@ -1,23 +1,37 @@
+// voxlingo/app/(tabs)/index.tsx
 import { useState, useRef, useCallback } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
+  TextInput,
   FlatList,
   StyleSheet,
   SafeAreaView,
 } from "react-native";
 import { Audio } from "expo-av";
+import { ArrowLeftRight, Settings, List } from "lucide-react-native";
 import { LanguageCode, Translation } from "../../types";
 import {
   DEFAULT_SOURCE_LANG,
   DEFAULT_TARGET_LANG,
+  getLanguageName,
 } from "../../constants/languages";
 import { LanguagePicker } from "../../components/LanguagePicker";
 import { TranslationBubble } from "../../components/TranslationBubble";
 import { AudioWaveform } from "../../components/AudioWaveform";
+import { ErrorBanner } from "../../components/ErrorBanner";
 import { useAudioStream } from "../../hooks/useAudioStream";
 import { useTranslation } from "../../hooks/useTranslation";
+import {
+  colors,
+  spacing,
+  borderRadius,
+  shadows,
+  fontFamily,
+  fontSize,
+  letterSpacing,
+} from "../../theme";
 
 export default function TravelScreen() {
   const [sourceLang, setSourceLang] = useState<LanguageCode>(DEFAULT_SOURCE_LANG);
@@ -96,86 +110,140 @@ export default function TravelScreen() {
     }
   }, [isRecording, sourceLang, targetLang, startRecording, stopRecording, setTranslating]);
 
+  const formatTime = (ts: number) => {
+    const d = new Date(ts);
+    return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  };
+
+  const hasConversation = translations.length > 0;
+
   return (
     <SafeAreaView style={styles.container}>
-      {/* Language Selectors */}
-      <View style={styles.languageBar}>
-        <LanguagePicker
-          selectedLang={sourceLang}
-          onSelect={setSourceLang}
-          label="From"
-        />
-        <TouchableOpacity
-          style={styles.swapButton}
-          onPress={handleSwapLanguages}
-        >
-          <Text style={styles.swapIcon}>⇄</Text>
-        </TouchableOpacity>
-        <LanguagePicker
-          selectedLang={targetLang}
-          onSelect={setTargetLang}
-          label="To"
-        />
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.logo}>VoxLingo</Text>
+        <View style={styles.headerActions}>
+          {hasConversation && (
+            <TouchableOpacity style={styles.headerButton} onPress={clearTranslations}>
+              <List size={16} color={colors.textSubtle} strokeWidth={2} />
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity style={styles.headerButton}>
+            <Settings size={16} color={colors.textSubtle} strokeWidth={2} />
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* Translation Chat */}
-      <FlatList
-        ref={flatListRef}
-        style={styles.chatContainer}
-        data={translations}
-        keyExtractor={(item) => item.id}
-        initialNumToRender={10}
-        maxToRenderPerBatch={10}
-        windowSize={7}
-        renderItem={({ item }) => (
-          <View>
-            {item.originalText !== "" && (
-              <TranslationBubble text={item.originalText} isSource={true} />
-            )}
-            {item.translatedText !== "" && (
-              <TranslationBubble text={item.translatedText} isSource={false} />
-            )}
-          </View>
-        )}
-        onContentSizeChange={() =>
-          flatListRef.current?.scrollToEnd({ animated: true })
-        }
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>
-              Tap the microphone to start translating
-            </Text>
-          </View>
-        }
-      />
-
-      {/* Error Display */}
-      {error && (
-        <View style={styles.errorBar}>
-          <Text style={styles.errorText}>{error}</Text>
+      {/* Language Bar */}
+      {!isRecording && (
+        <View style={styles.languageBar}>
+          {hasConversation ? (
+            <View style={styles.compactLangChip}>
+              <Text style={styles.compactLangFrom}>
+                {getLanguageName(sourceLang).substring(0, 2).toUpperCase()}
+              </Text>
+              <Text style={styles.compactLangArrow}>→</Text>
+              <Text style={styles.compactLangTo}>
+                {getLanguageName(targetLang).substring(0, 2).toUpperCase()}
+              </Text>
+            </View>
+          ) : (
+            <>
+              <LanguagePicker selectedLang={sourceLang} onSelect={setSourceLang} label="From" />
+              <TouchableOpacity style={styles.swapButton} onPress={handleSwapLanguages}>
+                <ArrowLeftRight size={16} color={colors.white} strokeWidth={2.5} />
+              </TouchableOpacity>
+              <LanguagePicker selectedLang={targetLang} onSelect={setTargetLang} label="To" />
+            </>
+          )}
         </View>
       )}
 
-      {/* Mic Button */}
-      <View style={styles.micContainer}>
-        <AudioWaveform isActive={isRecording} />
-        <TouchableOpacity
-          style={[styles.micButton, isRecording && styles.micButtonActive]}
-          onPress={handleMicPress}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.micIcon}>{isRecording ? "⏹" : "🎤"}</Text>
-        </TouchableOpacity>
-        {isTranslating && !isRecording && (
-          <Text style={styles.translatingText}>Translating...</Text>
-        )}
-        {translations.length > 0 && (
-          <TouchableOpacity
-            style={styles.clearButton}
-            onPress={clearTranslations}
-          >
-            <Text style={styles.clearText}>Clear</Text>
-          </TouchableOpacity>
+      {/* Chat / Waveform Area */}
+      {isRecording ? (
+        <View style={styles.recordingArea}>
+          <AudioWaveform isActive={true} />
+          <Text style={styles.listeningLabel}>Listening...</Text>
+          <Text style={styles.releaseHint}>Release to translate</Text>
+        </View>
+      ) : (
+        <FlatList
+          ref={flatListRef}
+          style={styles.chatContainer}
+          contentContainerStyle={translations.length === 0 ? styles.chatEmpty : undefined}
+          data={translations}
+          keyExtractor={(item) => item.id}
+          initialNumToRender={10}
+          maxToRenderPerBatch={10}
+          windowSize={7}
+          renderItem={({ item }) => (
+            <View>
+              {item.originalText !== "" && (
+                <TranslationBubble
+                  text={item.originalText}
+                  isSource={true}
+                  timestamp={formatTime(item.timestamp)}
+                />
+              )}
+              {item.translatedText !== "" && (
+                <TranslationBubble
+                  text={item.translatedText}
+                  isSource={false}
+                  timestamp={formatTime(item.timestamp)}
+                />
+              )}
+            </View>
+          )}
+          onContentSizeChange={() =>
+            flatListRef.current?.scrollToEnd({ animated: true })
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <View style={styles.emptyIcon}>
+                <Text style={styles.emptyIconText}>💬</Text>
+              </View>
+              <Text style={styles.emptyTitle}>Start a conversation</Text>
+              <Text style={styles.emptySubtitle}>Tap the mic or type a phrase</Text>
+            </View>
+          }
+        />
+      )}
+
+      {/* Error */}
+      {error && <ErrorBanner message={error} />}
+
+      {/* Bottom Input Bar */}
+      <View style={styles.bottomBar}>
+        {isRecording ? (
+          <View style={styles.recordingControls}>
+            <TouchableOpacity onPress={() => { stopRecording(); setTranslating(false); }}>
+              <Text style={styles.cancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.micButton, styles.micButtonStop]}
+              onPress={handleMicPress}
+            >
+              <View style={styles.stopSquare} />
+            </TouchableOpacity>
+            <View style={{ width: 48 }} />
+          </View>
+        ) : (
+          <View style={styles.inputRow}>
+            <View style={styles.textInputWrap}>
+              <TextInput
+                style={styles.textInput}
+                placeholder="Type a phrase..."
+                placeholderTextColor={colors.textDim}
+              />
+            </View>
+            <TouchableOpacity
+              style={[styles.micButton, styles.micButtonIdle]}
+              onPress={handleMicPress}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.micEmoji}>🎤</Text>
+            </TouchableOpacity>
+          </View>
         )}
       </View>
     </SafeAreaView>
@@ -185,98 +253,193 @@ export default function TravelScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#ffffff",
+    backgroundColor: colors.bgPrimary,
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+  },
+  logo: {
+    fontFamily: fontFamily.display,
+    fontSize: fontSize.heading,
+    color: colors.accentBlue,
+    letterSpacing: letterSpacing.display,
+  },
+  headerActions: {
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+  headerButton: {
+    width: 32,
+    height: 32,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.bgSurface,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: colors.bgElevated,
   },
   languageBar: {
     flexDirection: "row",
     alignItems: "flex-end",
     justifyContent: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#e5e7eb",
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
+    gap: spacing.sm,
   },
   swapButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#eef2ff",
+    width: 36,
+    height: 36,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.accentBlue,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 2,
+    ...shadows.glowSm,
   },
-  swapIcon: {
-    fontSize: 20,
-    color: "#3b82f6",
+  compactLangChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.bgSurface,
+    borderRadius: borderRadius.xl,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.bgElevated,
+    gap: spacing.sm,
+  },
+  compactLangFrom: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.textPrimary,
+  },
+  compactLangArrow: {
+    fontSize: 10,
+    color: colors.accentBlue,
+  },
+  compactLangTo: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.accentCyan,
   },
   chatContainer: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingHorizontal: spacing.lg,
   },
-  emptyContainer: {
+  chatEmpty: {
+    flex: 1,
+  },
+  recordingArea: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingTop: 100,
+    paddingHorizontal: spacing["2xl"],
   },
-  emptyText: {
-    fontSize: 16,
-    color: "#9ca3af",
-  },
-  errorBar: {
-    backgroundColor: "#fef2f2",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  errorText: {
-    color: "#dc2626",
+  listeningLabel: {
     fontSize: 14,
-    textAlign: "center",
+    fontWeight: "600",
+    color: colors.accentBlue,
+    marginTop: spacing.lg,
   },
-  micContainer: {
-    alignItems: "center",
-    paddingVertical: 16,
-    paddingBottom: 24,
-    borderTopWidth: 1,
-    borderTopColor: "#e5e7eb",
-    gap: 8,
+  releaseHint: {
+    fontSize: fontSize.caption,
+    color: colors.textDim,
+    marginTop: spacing.xs,
   },
-  micButton: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: "#3b82f6",
+  emptyState: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    elevation: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
   },
-  micButtonActive: {
-    backgroundColor: "#ef4444",
+  emptyIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.bgSurface,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: colors.bgElevated,
+    marginBottom: spacing.lg,
   },
-  micIcon: {
+  emptyIconText: {
     fontSize: 28,
+    opacity: 0.3,
   },
-  translatingText: {
+  emptyTitle: {
     fontSize: 14,
-    color: "#6b7280",
+    fontWeight: "500",
+    color: colors.textDim,
   },
-  clearButton: {
-    position: "absolute",
-    right: 24,
-    bottom: 40,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: "#f3f4f6",
+  emptySubtitle: {
+    fontSize: fontSize.caption,
+    color: colors.bgElevated,
+    marginTop: spacing.xs,
   },
-  clearText: {
+  bottomBar: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    paddingBottom: spacing.xl,
+    borderTopWidth: 1,
+    borderTopColor: colors.bgSurface,
+  },
+  inputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+  },
+  textInputWrap: {
+    flex: 1,
+    backgroundColor: colors.bgSurface,
+    borderRadius: borderRadius.xl + 4,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.bgElevated,
+  },
+  textInput: {
     fontSize: 14,
-    color: "#6b7280",
+    color: colors.textPrimary,
+    padding: 0,
+  },
+  micButton: {
+    width: 52,
+    height: 52,
+    borderRadius: borderRadius.full,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  micButtonIdle: {
+    backgroundColor: colors.accentBlue,
+    ...shadows.glowMd,
+  },
+  micButtonStop: {
+    backgroundColor: colors.error,
+    width: 60,
+    height: 60,
+    ...shadows.glowError,
+  },
+  micEmoji: {
+    fontSize: 22,
+  },
+  stopSquare: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    backgroundColor: colors.white,
+  },
+  recordingControls: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.lg,
+  },
+  cancelText: {
+    fontSize: 13,
+    color: colors.textMuted,
+    padding: spacing.sm,
   },
 });
