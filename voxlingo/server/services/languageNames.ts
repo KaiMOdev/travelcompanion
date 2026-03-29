@@ -21,3 +21,7 @@ const LANGUAGE_NAMES: Record<string, string> = {
 export function getLanguageNameForPrompt(code: string): string {
   return LANGUAGE_NAMES[code] || code;
 }
+
+export function isSupportedLanguage(code: string): boolean {
+  return code in LANGUAGE_NAMES;
+}

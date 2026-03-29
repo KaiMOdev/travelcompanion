@@ -20,6 +20,10 @@ export function getSocket(): Socket {
     socket = io(BACKEND_URL, {
       transports: ["websocket"],
       autoConnect: false,
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 10000,
     });
   }
   return socket;

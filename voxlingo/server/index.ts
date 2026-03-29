@@ -12,15 +12,20 @@ import { GeminiLiveSession } from "./services/geminiProxy";
 
 const app = express();
 const httpServer = createServer(app);
+
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(",")
+  : ["http://localhost:8081", "http://localhost:19006"];
+
 const io = new Server(httpServer, {
   cors: {
-    origin: "*",
+    origin: ALLOWED_ORIGINS,
     methods: ["GET", "POST"],
   },
 });
 
 app.use(helmet());
-app.use(cors());
+app.use(cors({ origin: ALLOWED_ORIGINS }));
 app.use(express.json({ limit: "10mb" }));
 
 app.use("/api/auth", authRouter);
@@ -31,6 +36,41 @@ app.get("/health", (_req, res) => {
 });
 
 const activeSessions = new Map<string, GeminiLiveSession>();
+const sessionTimestamps = new Map<string, number>();
+const socketEventCounts = new Map<string, { count: number; resetAt: number }>();
+
+const SESSION_TTL_MS = 30 * 60 * 1000; // 30 minutes max session
+const SOCKET_RATE_LIMIT = 60; // max audio-stream events per second
+
+// Clean up zombie sessions every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [socketId, timestamp] of sessionTimestamps) {
+    if (now - timestamp > SESSION_TTL_MS) {
+      const session = activeSessions.get(socketId);
+      if (session) {
+        session.disconnect();
+        activeSessions.delete(socketId);
+      }
+      sessionTimestamps.delete(socketId);
+      console.log(`Cleaned up zombie session: ${socketId}`);
+    }
+  }
+}, 5 * 60 * 1000);
+
+function checkSocketRateLimit(socketId: string): boolean {
+  const now = Date.now();
+  const entry = socketEventCounts.get(socketId);
+  if (!entry || now > entry.resetAt) {
+    socketEventCounts.set(socketId, { count: 1, resetAt: now + 1000 });
+    return true;
+  }
+  if (entry.count >= SOCKET_RATE_LIMIT) {
+    return false;
+  }
+  entry.count++;
+  return true;
+}
 
 io.on("connection", (socket) => {
   console.log(`Client connected: ${socket.id}`);
@@ -66,6 +106,7 @@ io.on("connection", (socket) => {
 
         await session.connect();
         activeSessions.set(socket.id, session);
+        sessionTimestamps.set(socket.id, Date.now());
         socket.emit("translation-ready");
       } catch (error: any) {
         socket.emit("translation-error", {
@@ -76,6 +117,10 @@ io.on("connection", (socket) => {
   );
 
   socket.on("audio-stream", (data: { audio: string }) => {
+    if (!checkSocketRateLimit(socket.id)) {
+      socket.emit("translation-error", { message: "Audio stream rate limit exceeded" });
+      return;
+    }
     const session = activeSessions.get(socket.id);
     if (session) {
       const buffer = Buffer.from(data.audio, "base64");
@@ -114,6 +159,7 @@ io.on("connection", (socket) => {
 
         await session.connect();
         activeSessions.set(socket.id, session);
+        sessionTimestamps.set(socket.id, Date.now());
         socket.emit("translation-ready");
       } catch (error: any) {
         socket.emit("translation-error", {
@@ -128,6 +174,7 @@ io.on("connection", (socket) => {
     if (session) {
       session.disconnect();
       activeSessions.delete(socket.id);
+      sessionTimestamps.delete(socket.id);
     }
   });
 
@@ -138,6 +185,8 @@ io.on("connection", (socket) => {
       session.disconnect();
       activeSessions.delete(socket.id);
     }
+    sessionTimestamps.delete(socket.id);
+    socketEventCounts.delete(socket.id);
   });
 });
 

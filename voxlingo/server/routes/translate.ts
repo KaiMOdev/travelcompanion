@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import { translateImageWithGemini } from "../services/geminiVision";
 import { rateLimiter } from "../middleware/rateLimit";
+import { isSupportedLanguage } from "../services/languageNames";
 
 export const translateRouter = Router();
 
@@ -18,6 +19,11 @@ translateRouter.post(
 
       if (!targetLang || typeof targetLang !== "string") {
         res.status(400).json({ error: "Missing or invalid 'targetLang' field" });
+        return;
+      }
+
+      if (!isSupportedLanguage(targetLang)) {
+        res.status(400).json({ error: `Unsupported language code: '${targetLang}'` });
         return;
       }
 
