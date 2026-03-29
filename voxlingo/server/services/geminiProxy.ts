@@ -31,8 +31,15 @@ export class GeminiLiveSession {
     }
 
     const ai = new GoogleGenAI({ apiKey });
-    const sourceName = getLanguageNameForPrompt(this.sourceLang);
+    const sourceName = this.sourceLang === "auto" ? "auto" : getLanguageNameForPrompt(this.sourceLang);
     const targetName = getLanguageNameForPrompt(this.targetLang);
+
+    let systemPrompt: string;
+    if (this.sourceLang === "auto") {
+      systemPrompt = `You are a real-time meeting translator. Listen to continuous audio. For each utterance: detect the speaker (label as Speaker 1, Speaker 2, etc. based on voice characteristics), detect the language they are speaking, provide the original text, and translate to ${targetName}. Respond with the translation spoken in ${targetName}.`;
+    } else {
+      systemPrompt = `You are a real-time voice translator. The user will speak in ${sourceName}. Translate everything they say into ${targetName}. Speak the translation naturally. Do not add commentary or explanations — only translate.`;
+    }
 
     this.session = await ai.live.connect({
       model: "gemini-2.0-flash-live-001",
@@ -41,7 +48,7 @@ export class GeminiLiveSession {
         systemInstruction: {
           parts: [
             {
-              text: `You are a real-time voice translator. The user will speak in ${sourceName}. Translate everything they say into ${targetName}. Speak the translation naturally. Do not add commentary or explanations — only translate.`,
+              text: systemPrompt,
             },
           ],
         },

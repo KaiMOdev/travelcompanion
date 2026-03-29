@@ -83,6 +83,46 @@ io.on("connection", (socket) => {
     }
   });
 
+  socket.on(
+    "start-meeting",
+    async (data: { userLang: string }) => {
+      try {
+        const existing = activeSessions.get(socket.id);
+        if (existing) {
+          existing.disconnect();
+          activeSessions.delete(socket.id);
+        }
+
+        const session = new GeminiLiveSession(
+          "auto",
+          data.userLang,
+          {
+            onTranslatedAudio: (audioBase64: string) => {
+              socket.emit("translated-audio", { audio: audioBase64 });
+            },
+            onTranslatedText: (text: string) => {
+              socket.emit("meeting-utterance", { text });
+            },
+            onInputText: (text: string) => {
+              socket.emit("meeting-input", { text });
+            },
+            onError: (error: Error) => {
+              socket.emit("translation-error", { message: error.message });
+            },
+          }
+        );
+
+        await session.connect();
+        activeSessions.set(socket.id, session);
+        socket.emit("translation-ready");
+      } catch (error: any) {
+        socket.emit("translation-error", {
+          message: error.message || "Failed to start meeting session",
+        });
+      }
+    }
+  );
+
   socket.on("stop-translation", () => {
     const session = activeSessions.get(socket.id);
     if (session) {
