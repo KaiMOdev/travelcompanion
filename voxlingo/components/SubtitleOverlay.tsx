@@ -1,25 +1,43 @@
 import { View, Text, StyleSheet } from "react-native";
+import { colors, spacing, borderRadius, fontSize } from "../theme";
 
 interface SubtitleOverlayProps {
   speaker: string;
   originalText: string;
   translatedText: string;
-  color: string;
+  speakerColor: string;
+  timestamp?: string;
+  isActive?: boolean;
 }
 
 export function SubtitleOverlay({
   speaker,
   originalText,
   translatedText,
-  color,
+  speakerColor,
+  timestamp,
+  isActive,
 }: SubtitleOverlayProps) {
   return (
     <View style={styles.container}>
-      <View style={[styles.avatar, { backgroundColor: color }]}>
-        <Text style={styles.avatarText}>{speaker.charAt(0)}</Text>
+      <View
+        style={[
+          styles.avatar,
+          { backgroundColor: speakerColor },
+          isActive && { ...styles.activeGlow, shadowColor: speakerColor },
+        ]}
+      >
+        <Text style={styles.avatarText}>
+          {speaker.substring(0, 2).toUpperCase()}
+        </Text>
       </View>
       <View style={styles.textContainer}>
-        <Text style={styles.speaker}>{speaker}</Text>
+        <View style={styles.speakerRow}>
+          <Text style={[styles.speakerName, { color: speakerColor }]}>
+            {speaker}
+          </Text>
+          {timestamp && <Text style={styles.timestamp}>{timestamp}</Text>}
+        </View>
         <Text style={styles.original}>{originalText}</Text>
         <Text style={styles.translated}>{translatedText}</Text>
       </View>
@@ -30,40 +48,54 @@ export function SubtitleOverlay({
 const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
-    padding: 12,
-    marginVertical: 4,
-    backgroundColor: "#f9fafb",
-    borderRadius: 12,
+    paddingVertical: spacing.md,
+    gap: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.bgSurface,
   },
   avatar: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: borderRadius.full,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 12,
+  },
+  activeGlow: {
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 4,
   },
   avatarText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 14,
+    color: colors.white,
+    fontWeight: "700",
+    fontSize: 13,
   },
   textContainer: {
     flex: 1,
   },
-  speaker: {
-    fontSize: 12,
-    fontWeight: "bold",
-    color: "#6b7280",
-    marginBottom: 2,
+  speakerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    marginBottom: 3,
+  },
+  speakerName: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  timestamp: {
+    fontSize: 10,
+    color: colors.textDim,
   },
   original: {
-    fontSize: 14,
-    color: "#9ca3af",
+    fontSize: fontSize.caption,
+    color: colors.textMuted,
+    marginBottom: 2,
   },
   translated: {
-    fontSize: 16,
-    color: "#1f2937",
-    marginTop: 2,
+    fontSize: 14,
+    fontWeight: "500",
+    color: colors.textPrimary,
   },
 });
