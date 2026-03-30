@@ -1,14 +1,5 @@
-import { View, StyleSheet } from "react-native";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withRepeat,
-  withSequence,
-  withTiming,
-  withDelay,
-  Easing,
-} from "react-native-reanimated";
-import { useEffect } from "react";
+import { View, StyleSheet, Animated } from "react-native";
+import { useEffect, useRef } from "react";
 import { colors, spacing } from "../theme";
 
 interface AudioWaveformProps {
@@ -18,33 +9,54 @@ interface AudioWaveformProps {
 const BAR_COUNT = 12;
 
 function WaveBar({ index, isActive }: { index: number; isActive: boolean }) {
-  const scale = useSharedValue(0.3);
+  const scale = useRef(new Animated.Value(0.3)).current;
+  const loopRef = useRef<Animated.CompositeAnimation | null>(null);
 
   useEffect(() => {
+    // Stop any existing animation
+    if (loopRef.current) {
+      loopRef.current.stop();
+      loopRef.current = null;
+    }
+
     if (isActive) {
       const minHeight = 0.2 + Math.random() * 0.2;
       const maxHeight = 0.5 + Math.random() * 0.5;
       const duration = 200 + Math.random() * 300;
 
-      scale.value = withRepeat(
-        withDelay(
-          index * 50,
-          withSequence(
-            withTiming(maxHeight, { duration, easing: Easing.out(Easing.ease) }),
-            withTiming(minHeight, { duration, easing: Easing.in(Easing.ease) }),
-          ),
-        ),
-        -1,
-        true,
+      const loop = Animated.loop(
+        Animated.sequence([
+          Animated.delay(index * 50),
+          Animated.timing(scale, {
+            toValue: maxHeight,
+            duration,
+            useNativeDriver: false,
+          }),
+          Animated.timing(scale, {
+            toValue: minHeight,
+            duration,
+            useNativeDriver: false,
+          }),
+        ])
       );
+      loopRef.current = loop;
+      loop.start();
     } else {
-      scale.value = withTiming(0.3, { duration: 200 });
+      Animated.timing(scale, {
+        toValue: 0.3,
+        duration: 200,
+        useNativeDriver: false,
+      }).start();
     }
-  }, [isActive, index, scale]);
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scaleY: scale.value }],
-  }));
+    return () => {
+      if (loopRef.current) {
+        loopRef.current.stop();
+        loopRef.current = null;
+      }
+      scale.stopAnimation();
+    };
+  }, [isActive, index, scale]);
 
   const isEven = index % 2 === 0;
 
@@ -52,8 +64,14 @@ function WaveBar({ index, isActive }: { index: number; isActive: boolean }) {
     <Animated.View
       style={[
         styles.bar,
-        { backgroundColor: isActive ? (isEven ? colors.accentBlue : colors.accentCyan) : colors.bgElevated },
-        animatedStyle,
+        {
+          backgroundColor: isActive
+            ? isEven
+              ? colors.accentBlue
+              : colors.accentCyan
+            : colors.bgElevated,
+          transform: [{ scaleY: scale }],
+        },
       ]}
     />
   );

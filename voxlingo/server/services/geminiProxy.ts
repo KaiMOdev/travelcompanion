@@ -65,13 +65,25 @@ export class GeminiLiveSession {
           console.log("Gemini Live session opened");
         },
         onmessage: (message: any) => {
+          console.log("[Gemini] onmessage keys:", Object.keys(message || {}));
           this.handleMessage(message);
         },
         onerror: (e: any) => {
-          this.callbacks.onError(new Error(e.message || "Gemini Live error"));
+          console.error("[Gemini] onerror:", JSON.stringify(e, null, 2));
+          const msg = e?.message || "";
+          if (msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED") || msg.includes("quota")) {
+            this.callbacks.onError(new Error("Gemini API quota exceeded. Free tier limit reached — try again later or enable billing."));
+          } else {
+            this.callbacks.onError(new Error(msg || "Gemini Live error"));
+          }
         },
         onclose: () => {
-          console.log("Gemini Live session closed");
+          console.log("[Gemini] session closed");
+          // If session closes immediately with no messages, likely a quota/auth issue
+          if (this.session) {
+            this.callbacks.onError(new Error("Translation session ended unexpectedly. This may be due to API quota limits — check your Gemini API usage."));
+            this.session = null;
+          }
         },
       },
     });
@@ -102,7 +114,10 @@ export class GeminiLiveSession {
   }
 
   sendAudio(pcmBuffer: Buffer): void {
-    if (!this.session) return;
+    if (!this.session) {
+      console.warn("[Gemini] sendAudio called but session is closed");
+      return;
+    }
     this.session.sendRealtimeInput({
       audio: {
         data: pcmBuffer.toString("base64"),

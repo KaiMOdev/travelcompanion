@@ -78,6 +78,7 @@ io.on("connection", (socket) => {
   socket.on(
     "start-translation",
     async (data: { sourceLang: string; targetLang: string; locationHints?: string }) => {
+      console.log(`[DEBUG] start-translation: ${data.sourceLang} → ${data.targetLang}, location: ${!!data.locationHints}`);
       try {
         const existing = activeSessions.get(socket.id);
         if (existing) {
@@ -106,10 +107,12 @@ io.on("connection", (socket) => {
         );
 
         await session.connect();
+        console.log(`[DEBUG] Gemini session connected for ${socket.id}`);
         activeSessions.set(socket.id, session);
         sessionTimestamps.set(socket.id, Date.now());
         socket.emit("translation-ready");
       } catch (error: any) {
+        console.error(`[DEBUG] start-translation FAILED:`, error.message);
         socket.emit("translation-error", {
           message: error.message || "Failed to start translation session",
         });
@@ -118,6 +121,7 @@ io.on("connection", (socket) => {
   );
 
   socket.on("audio-stream", (data: { audio: string }) => {
+    console.log(`[DEBUG] audio-stream: ${data.audio?.length || 0} chars from ${socket.id}`);
     if (!checkSocketRateLimit(socket.id)) {
       socket.emit("translation-error", { message: "Audio stream rate limit exceeded" });
       return;

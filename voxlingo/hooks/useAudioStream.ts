@@ -1,9 +1,14 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { AppState } from "react-native";
+import { AppState, Platform } from "react-native";
 import { Audio } from "expo-av";
 import { LanguageCode } from "../types";
 import { startTranslationSession } from "../services/gemini";
 import { getLocationContext, formatLocationForPrompt } from "../services/maps";
+import {
+  isWebPlatform,
+  startWebAudioCapture,
+  stopWebAudioCapture,
+} from "../services/webAudioCapture";
 
 export interface AudioStreamCallbacks {
   onTranslatedAudio: (audioBase64: string) => void;
@@ -29,6 +34,9 @@ export function useAudioStream(callbacks: AudioStreamCallbacks) {
     stop: () => void;
   } | null>(null);
   const chunkIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const usingWebAudioRef = useRef(false);
+
+  // --- Native (iOS/Android) chunk streaming via expo-av ---
 
   const sendCurrentChunk = useCallback(async () => {
     if (!recordingRef.current || !sessionRef.current) return;
@@ -85,23 +93,14 @@ export function useAudioStream(callbacks: AudioStreamCallbacks) {
     }
   }, []);
 
+  // --- Start recording ---
+
   const startRecording = useCallback(
     async (sourceLang: LanguageCode, targetLang: LanguageCode) => {
       try {
         setState({ isRecording: false, error: null });
 
-        const { granted } = await Audio.requestPermissionsAsync();
-        if (!granted) {
-          setState({ isRecording: false, error: "Microphone permission denied" });
-          return;
-        }
-
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: true,
-          playsInSilentModeIOS: true,
-        });
-
-        // Fetch location context for culturally-aware translations
+        // Fetch location context (non-blocking)
         const locationContext = await getLocationContext().catch(() => null);
         const locationHints = locationContext
           ? formatLocationForPrompt(locationContext)
@@ -119,38 +118,61 @@ export function useAudioStream(callbacks: AudioStreamCallbacks) {
         }, { locationHints });
         sessionRef.current = session;
 
-        // Start first recording chunk
-        const recording = new Audio.Recording();
-        await recording.prepareToRecordAsync({
-          android: {
-            extension: ".wav",
-            outputFormat: 2,
-            audioEncoder: 1,
-            sampleRate: 16000,
-            numberOfChannels: 1,
-            bitRate: 256000,
-          },
-          ios: {
-            extension: ".wav",
-            outputFormat: "linearPCM" as any,
-            audioQuality: 127,
-            sampleRate: 16000,
-            numberOfChannels: 1,
-            bitRate: 256000,
-            linearPCMBitDepth: 16,
-            linearPCMIsBigEndian: false,
-            linearPCMIsFloat: false,
-          },
-          web: {},
-        });
+        if (isWebPlatform()) {
+          // Web: use Web Audio API for raw PCM capture
+          usingWebAudioRef.current = true;
+          await startWebAudioCapture((pcmBase64: string) => {
+            if (sessionRef.current) {
+              sessionRef.current.sendAudio(pcmBase64);
+            }
+          });
+        } else {
+          // Native: use expo-av recording
+          usingWebAudioRef.current = false;
 
-        recordingRef.current = recording;
-        await recording.startAsync();
+          const { granted } = await Audio.requestPermissionsAsync();
+          if (!granted) {
+            setState({ isRecording: false, error: "Microphone permission denied" });
+            return;
+          }
 
-        // Stream audio chunks every 1 second
-        chunkIntervalRef.current = setInterval(() => {
-          sendCurrentChunk();
-        }, 1000);
+          await Audio.setAudioModeAsync({
+            allowsRecordingIOS: true,
+            playsInSilentModeIOS: true,
+          });
+
+          const recording = new Audio.Recording();
+          await recording.prepareToRecordAsync({
+            android: {
+              extension: ".wav",
+              outputFormat: 2,
+              audioEncoder: 1,
+              sampleRate: 16000,
+              numberOfChannels: 1,
+              bitRate: 256000,
+            },
+            ios: {
+              extension: ".wav",
+              outputFormat: "linearPCM" as any,
+              audioQuality: 127,
+              sampleRate: 16000,
+              numberOfChannels: 1,
+              bitRate: 256000,
+              linearPCMBitDepth: 16,
+              linearPCMIsBigEndian: false,
+              linearPCMIsFloat: false,
+            },
+            web: {},
+          });
+
+          recordingRef.current = recording;
+          await recording.startAsync();
+
+          // Stream audio chunks every 1 second
+          chunkIntervalRef.current = setInterval(() => {
+            sendCurrentChunk();
+          }, 1000);
+        }
 
         setState({ isRecording: true, error: null });
       } catch (error: any) {
@@ -164,36 +186,48 @@ export function useAudioStream(callbacks: AudioStreamCallbacks) {
     [callbacks, sendCurrentChunk]
   );
 
+  // --- Stop recording ---
+
   const stopRecording = useCallback(async () => {
     try {
-      // Stop chunk streaming
-      if (chunkIntervalRef.current) {
-        clearInterval(chunkIntervalRef.current);
-        chunkIntervalRef.current = null;
-      }
-
-      // Send final chunk
-      const recording = recordingRef.current;
-      if (recording) {
-        await recording.stopAndUnloadAsync();
-        const uri = recording.getURI();
-        recordingRef.current = null;
-
-        if (uri && sessionRef.current) {
-          const response = await fetch(uri);
-          const blob = await response.blob();
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            const base64 = (reader.result as string).split(",")[1];
-            if (base64 && sessionRef.current) {
-              sessionRef.current.sendAudio(base64);
-            }
-          };
-          reader.onerror = () => {
-            console.warn("FileReader error reading final audio chunk");
-          };
-          reader.readAsDataURL(blob);
+      if (usingWebAudioRef.current) {
+        // Web: stop Web Audio capture
+        stopWebAudioCapture();
+      } else {
+        // Native: stop expo-av recording
+        if (chunkIntervalRef.current) {
+          clearInterval(chunkIntervalRef.current);
+          chunkIntervalRef.current = null;
         }
+
+        const recording = recordingRef.current;
+        if (recording) {
+          await recording.stopAndUnloadAsync();
+          const uri = recording.getURI();
+          recordingRef.current = null;
+
+          // Send final chunk
+          if (uri && sessionRef.current) {
+            const response = await fetch(uri);
+            const blob = await response.blob();
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              const base64 = (reader.result as string).split(",")[1];
+              if (base64 && sessionRef.current) {
+                sessionRef.current.sendAudio(base64);
+              }
+            };
+            reader.onerror = () => {
+              console.warn("FileReader error reading final audio chunk");
+            };
+            reader.readAsDataURL(blob);
+          }
+        }
+
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          playsInSilentModeIOS: true,
+        });
       }
 
       // Stop translation session
@@ -201,11 +235,6 @@ export function useAudioStream(callbacks: AudioStreamCallbacks) {
         sessionRef.current.stop();
         sessionRef.current = null;
       }
-
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-        playsInSilentModeIOS: true,
-      });
 
       setState({ isRecording: false, error: null });
     } catch (error: any) {
