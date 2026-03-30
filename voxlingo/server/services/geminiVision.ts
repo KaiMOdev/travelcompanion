@@ -23,7 +23,7 @@ export async function translateImageWithGemini(
   const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, "");
 
   const response = await ai.models.generateContent({
-    model: "gemini-2.0-flash",
+    model: "gemini-2.5-flash",
     contents: [
       {
         role: "user",

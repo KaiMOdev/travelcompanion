@@ -27,7 +27,7 @@ describe("translateImageWithGemini", () => {
 
     expect(mockGenerateContent).toHaveBeenCalledTimes(1);
     const callArgs = mockGenerateContent.mock.calls[0][0];
-    expect(callArgs.model).toBe("gemini-2.0-flash");
+    expect(callArgs.model).toBe("gemini-2.5-flash");
     expect(callArgs.contents[0].parts).toHaveLength(2);
     expect(callArgs.contents[0].parts[0].inlineData.mimeType).toBe("image/jpeg");
     expect(callArgs.contents[0].parts[0].inlineData.data).toBe("base64data");
