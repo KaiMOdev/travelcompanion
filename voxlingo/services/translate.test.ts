@@ -1,3 +1,8 @@
+jest.mock('expo-constants', () => ({
+  expoConfig: { hostUri: 'localhost:8081' },
+  manifest2: null,
+}));
+
 import { translateAudio } from './translate';
 
 global.fetch = jest.fn();

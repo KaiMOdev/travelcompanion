@@ -1,12 +1,21 @@
+import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 import { TranslateResponse, TranslateErrorResponse } from '../types';
 
-// __DEV__ is a React Native global; default to true when not defined (e.g. in tests)
-declare const __DEV__: boolean | undefined;
+function getApiUrl(): string {
+  if (Platform.OS === 'web') {
+    return 'http://localhost:3001';
+  }
+  // On mobile, use the dev machine's LAN IP from Expo
+  const debuggerHost = Constants.expoConfig?.hostUri ?? Constants.manifest2?.extra?.expoGo?.debuggerHost;
+  if (debuggerHost) {
+    const host = debuggerHost.split(':')[0];
+    return `http://${host}:3001`;
+  }
+  return 'http://localhost:3001';
+}
 
-const API_URL =
-  typeof __DEV__ !== 'undefined' && !__DEV__
-    ? 'http://localhost:3001' // Update for production later
-    : 'http://localhost:3001';
+const API_URL = getApiUrl();
 
 export async function translateAudio(
   audio: string,

@@ -81,7 +81,7 @@ export function createApp() {
 if (require.main === module) {
   const port = process.env.PORT || 3001;
   const app = createApp();
-  app.listen(port, () => {
-    console.log(`VoxLingo server running on port ${port}`);
+  app.listen(Number(port), '0.0.0.0', () => {
+    console.log(`VoxLingo server running on 0.0.0.0:${port}`);
   });
 }
