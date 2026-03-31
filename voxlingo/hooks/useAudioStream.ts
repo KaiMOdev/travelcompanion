@@ -4,6 +4,7 @@ import { Audio } from "expo-av";
 import { LanguageCode } from "../types";
 import { startTranslationSession } from "../services/gemini";
 import { getLocationContext, formatLocationForPrompt } from "../services/maps";
+import { RECORDING_OPTIONS } from "../constants/audioConfig";
 import {
   isWebPlatform,
   startWebAudioCapture,
@@ -21,30 +22,6 @@ export interface AudioStreamState {
   isRecording: boolean;
   error: string | null;
 }
-
-// Shared recording config for iOS and Android — produces 16-bit PCM at 16kHz mono
-const RECORDING_OPTIONS: Audio.RecordingOptions = {
-  android: {
-    extension: ".wav",
-    outputFormat: Audio.AndroidOutputFormat.DEFAULT,
-    audioEncoder: Audio.AndroidAudioEncoder.DEFAULT,
-    sampleRate: 16000,
-    numberOfChannels: 1,
-    bitRate: 256000,
-  },
-  ios: {
-    extension: ".wav",
-    outputFormat: Audio.IOSOutputFormat.LINEARPCM,
-    audioQuality: Audio.IOSAudioQuality.MAX,
-    sampleRate: 16000,
-    numberOfChannels: 1,
-    bitRate: 256000,
-    linearPCMBitDepth: 16,
-    linearPCMIsBigEndian: false,
-    linearPCMIsFloat: false,
-  },
-  web: {},
-};
 
 export function useAudioStream(callbacks: AudioStreamCallbacks) {
   const [state, setState] = useState<AudioStreamState>({

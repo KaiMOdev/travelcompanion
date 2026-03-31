@@ -3,7 +3,7 @@ import { useMeetingStream } from "./useMeetingStream";
 
 jest.mock("expo-av", () => ({
   Audio: {
-    requestPermissionsAsync: jest.fn().mockResolvedValue({ granted: true }),
+    requestPermissionsAsync: jest.fn().mockResolvedValue({ granted: true, canAskAgain: true }),
     setAudioModeAsync: jest.fn().mockResolvedValue(undefined),
     Recording: jest.fn().mockImplementation(() => ({
       prepareToRecordAsync: jest.fn().mockResolvedValue(undefined),
@@ -11,7 +11,17 @@ jest.mock("expo-av", () => ({
       stopAndUnloadAsync: jest.fn().mockResolvedValue(undefined),
       getURI: jest.fn().mockReturnValue("file:///mock/recording.wav"),
     })),
+    AndroidOutputFormat: { DEFAULT: 0 },
+    AndroidAudioEncoder: { DEFAULT: 0 },
+    IOSOutputFormat: { LINEARPCM: 0 },
+    IOSAudioQuality: { MAX: 127 },
   },
+}));
+
+jest.mock("../services/webAudioCapture", () => ({
+  isWebPlatform: jest.fn().mockReturnValue(false),
+  startWebAudioCapture: jest.fn().mockResolvedValue(undefined),
+  stopWebAudioCapture: jest.fn(),
 }));
 
 const mockSocket = {

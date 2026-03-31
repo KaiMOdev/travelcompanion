@@ -1,8 +1,14 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { AppState } from "react-native";
+import { AppState, Linking, Platform } from "react-native";
 import { Audio } from "expo-av";
 import { LanguageCode } from "../types";
 import { getSocket } from "../services/gemini";
+import { RECORDING_OPTIONS } from "../constants/audioConfig";
+import {
+  isWebPlatform,
+  startWebAudioCapture,
+  stopWebAudioCapture,
+} from "../services/webAudioCapture";
 
 export interface MeetingUtteranceData {
   speaker: string;
@@ -24,22 +30,12 @@ export function useMeetingStream(callbacks: MeetingStreamCallbacks) {
   const recordingRef = useRef<Audio.Recording | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const chunkIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const usingWebAudioRef = useRef(false);
 
   const startListening = useCallback(
     async (userLang: LanguageCode) => {
       try {
         setError(null);
-
-        const { granted } = await Audio.requestPermissionsAsync();
-        if (!granted) {
-          setError("Microphone permission denied");
-          return;
-        }
-
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: true,
-          playsInSilentModeIOS: true,
-        });
 
         const socket = getSocket();
         if (!socket.connected) {
@@ -51,25 +47,23 @@ export function useMeetingStream(callbacks: MeetingStreamCallbacks) {
         socket.off("translation-error");
 
         socket.on("meeting-utterance", (data: { text: string }) => {
-          const utterance: MeetingUtteranceData = {
+          callbacks.onUtterance({
             speaker: "Speaker",
             lang: "auto",
             original: "",
             translated: data.text,
             timestamp: Date.now(),
-          };
-          callbacks.onUtterance(utterance);
+          });
         });
 
         socket.on("meeting-input", (data: { text: string }) => {
-          const utterance: MeetingUtteranceData = {
+          callbacks.onUtterance({
             speaker: "Speaker",
             lang: "auto",
             original: data.text,
             translated: "",
             timestamp: Date.now(),
-          };
-          callbacks.onUtterance(utterance);
+          });
         });
 
         socket.on("translation-error", (data: { message: string }) => {
@@ -78,86 +72,74 @@ export function useMeetingStream(callbacks: MeetingStreamCallbacks) {
 
         socket.emit("start-meeting", { userLang });
 
-        const recording = new Audio.Recording();
-        await recording.prepareToRecordAsync({
-          android: {
-            extension: ".wav",
-            outputFormat: 2,
-            audioEncoder: 1,
-            sampleRate: 16000,
-            numberOfChannels: 1,
-            bitRate: 256000,
-          },
-          ios: {
-            extension: ".wav",
-            outputFormat: "linearPCM" as any,
-            audioQuality: 127,
-            sampleRate: 16000,
-            numberOfChannels: 1,
-            bitRate: 256000,
-            linearPCMBitDepth: 16,
-            linearPCMIsBigEndian: false,
-            linearPCMIsFloat: false,
-          },
-          web: {},
-        });
-
-        recordingRef.current = recording;
-        await recording.startAsync();
-
-        // Set intervals AFTER recording starts successfully to avoid leaks on error
-        chunkIntervalRef.current = setInterval(async () => {
-          if (!recordingRef.current) return;
-          try {
-            const currentRecording = recordingRef.current;
-            await currentRecording.stopAndUnloadAsync();
-            const uri = currentRecording.getURI();
-
-            if (uri) {
-              const response = await fetch(uri);
-              const blob = await response.blob();
-              const reader = new FileReader();
-              reader.onloadend = () => {
-                const base64 = (reader.result as string).split(",")[1];
-                if (base64) {
-                  socket.emit("audio-stream", { audio: base64 });
-                }
-              };
-              reader.onerror = () => {
-                console.warn("FileReader error reading meeting audio chunk");
-              };
-              reader.readAsDataURL(blob);
+        if (isWebPlatform()) {
+          // Web: use Web Audio API for raw PCM capture
+          usingWebAudioRef.current = true;
+          await startWebAudioCapture((pcmBase64: string) => {
+            if (pcmBase64.length > 100) {
+              socket.emit("audio-stream", { audio: pcmBase64 });
             }
+          });
+        } else {
+          // Native: use expo-av recording
+          usingWebAudioRef.current = false;
 
-            const newRecording = new Audio.Recording();
-            await newRecording.prepareToRecordAsync({
-              android: {
-                extension: ".wav",
-                outputFormat: 2,
-                audioEncoder: 1,
-                sampleRate: 16000,
-                numberOfChannels: 1,
-                bitRate: 256000,
-              },
-              ios: {
-                extension: ".wav",
-                outputFormat: "linearPCM" as any,
-                audioQuality: 127,
-                sampleRate: 16000,
-                numberOfChannels: 1,
-                bitRate: 256000,
-                linearPCMBitDepth: 16,
-                linearPCMIsBigEndian: false,
-                linearPCMIsFloat: false,
-              },
-              web: {},
-            });
-            recordingRef.current = newRecording;
-            await newRecording.startAsync();
-          } catch (e) {
-            console.warn("Chunk recording error:", e);
+          const { granted, canAskAgain } = await Audio.requestPermissionsAsync();
+          if (!granted) {
+            if (!canAskAgain) {
+              setError("Microphone permission denied. Please enable it in your device settings.");
+              if (Platform.OS !== "web") {
+                Linking.openSettings().catch(() => {});
+              }
+            } else {
+              setError("Microphone permission denied");
+            }
+            return;
           }
-        }, 1000);
+
+          await Audio.setAudioModeAsync({
+            allowsRecordingIOS: true,
+            playsInSilentModeIOS: true,
+          });
+
+          const recording = new Audio.Recording();
+          await recording.prepareToRecordAsync(RECORDING_OPTIONS);
+          recordingRef.current = recording;
+          await recording.startAsync();
+
+          // Stream audio chunks every 1 second
+          chunkIntervalRef.current = setInterval(async () => {
+            if (!recordingRef.current) return;
+            try {
+              const currentRecording = recordingRef.current;
+              await currentRecording.stopAndUnloadAsync();
+              const uri = currentRecording.getURI();
+
+              if (uri) {
+                const response = await fetch(uri);
+                const blob = await response.blob();
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                  const base64 = (reader.result as string)?.split(",")[1];
+                  if (base64 && base64.length > 100) {
+                    socket.emit("audio-stream", { audio: base64 });
+                  }
+                };
+                reader.onerror = () => {
+                  console.warn("FileReader error reading meeting audio chunk");
+                };
+                reader.readAsDataURL(blob);
+              }
+
+              const newRecording = new Audio.Recording();
+              await newRecording.prepareToRecordAsync(RECORDING_OPTIONS);
+              recordingRef.current = newRecording;
+              await newRecording.startAsync();
+            } catch (e) {
+              console.warn("Chunk recording error:", e);
+            }
+          }, 1000);
+        }
 
         setDuration(0);
         timerRef.current = setInterval(() => {
@@ -166,7 +148,6 @@ export function useMeetingStream(callbacks: MeetingStreamCallbacks) {
 
         setIsListening(true);
       } catch (err: any) {
-        // Clean up any intervals that may have been set before the error
         if (chunkIntervalRef.current) {
           clearInterval(chunkIntervalRef.current);
           chunkIntervalRef.current = null;
@@ -184,9 +165,23 @@ export function useMeetingStream(callbacks: MeetingStreamCallbacks) {
 
   const stopListening = useCallback(async () => {
     try {
-      if (chunkIntervalRef.current) {
-        clearInterval(chunkIntervalRef.current);
-        chunkIntervalRef.current = null;
+      if (usingWebAudioRef.current) {
+        stopWebAudioCapture();
+      } else {
+        if (chunkIntervalRef.current) {
+          clearInterval(chunkIntervalRef.current);
+          chunkIntervalRef.current = null;
+        }
+
+        if (recordingRef.current) {
+          await recordingRef.current.stopAndUnloadAsync();
+          recordingRef.current = null;
+        }
+
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          playsInSilentModeIOS: true,
+        });
       }
 
       if (timerRef.current) {
@@ -194,21 +189,14 @@ export function useMeetingStream(callbacks: MeetingStreamCallbacks) {
         timerRef.current = null;
       }
 
-      if (recordingRef.current) {
-        await recordingRef.current.stopAndUnloadAsync();
-        recordingRef.current = null;
-      }
-
       const socket = getSocket();
       socket.emit("stop-translation");
-      socket.off("meeting-utterance");
-      socket.off("meeting-input");
-      socket.off("translation-error");
-
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-        playsInSilentModeIOS: true,
-      });
+      // Delay cleanup so final responses can arrive
+      setTimeout(() => {
+        socket.off("meeting-utterance");
+        socket.off("meeting-input");
+        socket.off("translation-error");
+      }, 5000);
 
       setIsListening(false);
     } catch (err: any) {
@@ -216,7 +204,7 @@ export function useMeetingStream(callbacks: MeetingStreamCallbacks) {
     }
   }, []);
 
-  // Stop listening when app goes to background to save battery
+  // Stop listening when app goes to background
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextState) => {
       if (nextState === "background" && isListening) {
@@ -226,11 +214,5 @@ export function useMeetingStream(callbacks: MeetingStreamCallbacks) {
     return () => subscription.remove();
   }, [isListening, stopListening]);
 
-  return {
-    isListening,
-    error,
-    duration,
-    startListening,
-    stopListening,
-  };
+  return { isListening, error, duration, startListening, stopListening };
 }

@@ -9,7 +9,8 @@ export interface GeminiSessionCallbacks {
 }
 
 const MAX_RECONNECT_ATTEMPTS = 3;
-const MAX_ACCUMULATED_LENGTH = 5000; // Prevent unbounded text growth
+const MAX_ACCUMULATED_LENGTH = 5000;
+const MAX_PENDING_AUDIO_CHUNKS = 100;
 
 export class GeminiLiveSession {
   private session: any = null;
@@ -147,7 +148,7 @@ export class GeminiLiveSession {
 
   sendAudio(pcmBuffer: Buffer): void {
     if (!this.session) {
-      if (this.isActive && this.reconnecting) {
+      if (this.isActive && this.reconnecting && this.pendingAudio.length < MAX_PENDING_AUDIO_CHUNKS) {
         this.pendingAudio.push(Buffer.from(pcmBuffer));
       }
       return;
