@@ -8,6 +8,9 @@ export interface GeminiSessionCallbacks {
   onError: (error: Error) => void;
 }
 
+const MAX_RECONNECT_ATTEMPTS = 3;
+const MAX_ACCUMULATED_LENGTH = 5000; // Prevent unbounded text growth
+
 export class GeminiLiveSession {
   private session: any = null;
   private ai: GoogleGenAI;
@@ -16,9 +19,10 @@ export class GeminiLiveSession {
   private callbacks: GeminiSessionCallbacks;
   private locationHints?: string;
   private accumulatedInput = "";
-  private isActive = false; // true while user is recording
+  private isActive = false;
   private reconnecting = false;
-  private pendingAudio: Buffer[] = []; // buffer audio during reconnection
+  private reconnectAttempts = 0;
+  private pendingAudio: Buffer[] = [];
 
   constructor(
     sourceLang: string,
@@ -40,13 +44,14 @@ export class GeminiLiveSession {
   async connect(): Promise<void> {
     this.accumulatedInput = "";
     this.isActive = true;
+    this.reconnectAttempts = 0;
     await this.createSession();
   }
 
   private async createSession(): Promise<void> {
     const sourceName = this.sourceLang === "auto" ? "" : getLanguageNameForPrompt(this.sourceLang);
 
-    this.session = await this.ai.live.connect({
+    const connectPromise = this.ai.live.connect({
       model: "gemini-2.5-flash-native-audio-latest",
       config: {
         responseModalities: [Modality.AUDIO],
@@ -63,6 +68,7 @@ export class GeminiLiveSession {
       callbacks: {
         onopen: () => {
           console.log("Gemini Live session opened");
+          this.reconnectAttempts = 0; // Reset on successful connection
         },
         onmessage: (message: any) => {
           this.handleMessage(message);
@@ -73,24 +79,39 @@ export class GeminiLiveSession {
         onclose: () => {
           console.log("[Gemini] session closed");
           this.session = null;
-          // Auto-reconnect if user is still recording
-          if (this.isActive && !this.reconnecting) {
+          // Auto-reconnect with retry limit
+          if (this.isActive && !this.reconnecting && this.reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
             this.reconnecting = true;
-            console.log("[Gemini] auto-reconnecting (user still recording)...");
-            this.createSession()
-              .then(() => {
-                console.log("[Gemini] reconnected successfully");
-                this.reconnecting = false;
-                this.flushPendingAudio();
-              })
-              .catch((e) => {
-                console.error("[Gemini] reconnect failed:", e.message);
-                this.reconnecting = false;
-              });
+            this.reconnectAttempts++;
+            const delay = Math.min(500 * this.reconnectAttempts, 2000);
+            console.log(`[Gemini] reconnecting (attempt ${this.reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}) in ${delay}ms...`);
+            setTimeout(() => {
+              this.createSession()
+                .then(() => {
+                  console.log("[Gemini] reconnected successfully");
+                  this.reconnecting = false;
+                  this.flushPendingAudio();
+                })
+                .catch((e) => {
+                  console.error("[Gemini] reconnect failed:", e.message);
+                  this.reconnecting = false;
+                  this.callbacks.onError(new Error("Live session reconnection failed. Translation will use text captured so far."));
+                });
+            }, delay);
+          } else if (this.isActive && this.reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+            console.warn("[Gemini] max reconnect attempts reached");
+            this.callbacks.onError(new Error("Live transcription session ended. Translation will use text captured so far."));
           }
         },
       },
     });
+
+    // Timeout after 15 seconds
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("Gemini Live connection timed out")), 15000)
+    );
+
+    this.session = await Promise.race([connectPromise, timeout]);
   }
 
   private handleMessage(message: any): void {
@@ -98,15 +119,16 @@ export class GeminiLiveSession {
     if (!content) return;
 
     if (content.inputTranscription?.text) {
-      this.accumulatedInput += content.inputTranscription.text;
-      console.log(`[Gemini] accumulated: "${this.accumulatedInput}"`);
+      // Bounds check to prevent unbounded growth
+      if (this.accumulatedInput.length < MAX_ACCUMULATED_LENGTH) {
+        this.accumulatedInput += content.inputTranscription.text;
+      }
       this.callbacks.onInputText(this.accumulatedInput);
     }
   }
 
   sendAudio(pcmBuffer: Buffer): void {
     if (!this.session) {
-      // Buffer audio during reconnection so nothing is lost
       if (this.isActive && this.reconnecting) {
         this.pendingAudio.push(Buffer.from(pcmBuffer));
       }
@@ -134,9 +156,8 @@ export class GeminiLiveSession {
     this.pendingAudio = [];
   }
 
-  // Signal that recording has stopped — flush audio buffer and prevent reconnection
   stopRecording(): void {
-    this.isActive = false; // Prevent auto-reconnect
+    this.isActive = false;
     if (this.session) {
       try {
         this.session.sendRealtimeInput({ audioStreamEnd: true });
@@ -186,16 +207,17 @@ Transcription: ${text}`,
         console.log(`[Gemini] translation: "${translation}"`);
         this.callbacks.onTranslatedText(translation);
       }
+      // Only clear on success
+      this.accumulatedInput = "";
     } catch (error: any) {
       console.error("[Gemini] translation error:", error.message);
       this.callbacks.onError(new Error("Translation failed: " + error.message));
+      // Don't clear accumulatedInput on error — allows retry
     }
-
-    this.accumulatedInput = "";
   }
 
   disconnect(): void {
-    this.isActive = false; // Prevent auto-reconnect
+    this.isActive = false;
     this.pendingAudio = [];
     if (this.session) {
       try {

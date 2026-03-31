@@ -13,6 +13,7 @@ const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL
   || (__DEV__ ? "http://localhost:3001" : "https://your-production-server.com");
 
 let socket: Socket | null = null;
+let activeSessionId = 0; // Track active session to prevent stale callbacks
 
 export function getSocket(): Socket {
   if (!socket) {
@@ -35,32 +36,44 @@ export function startTranslationSession(
   options?: { locationHints?: string }
 ): { sendAudio: (base64Audio: string) => void; stop: () => void } {
   const sock = getSocket();
+  const sessionId = ++activeSessionId;
 
+  // Remove any existing listeners from previous sessions
   sock.off("translated-audio");
   sock.off("translated-text");
   sock.off("input-text");
   sock.off("translation-ready");
   sock.off("translation-error");
 
+  // Guard callbacks with session ID to prevent stale callbacks
   sock.on("translated-audio", (data: { audio: string }) => {
-    callbacks.onTranslatedAudio(data.audio);
+    if (sessionId === activeSessionId) {
+      callbacks.onTranslatedAudio(data.audio);
+    }
   });
 
   sock.on("translated-text", (data: { text: string }) => {
-    console.log("[gemini.ts] received translated-text:", data.text?.substring(0, 50));
-    callbacks.onTranslatedText(data.text);
+    if (sessionId === activeSessionId) {
+      callbacks.onTranslatedText(data.text);
+    }
   });
 
   sock.on("input-text", (data: { text: string }) => {
-    callbacks.onInputText(data.text);
+    if (sessionId === activeSessionId) {
+      callbacks.onInputText(data.text);
+    }
   });
 
   sock.on("translation-ready", () => {
-    callbacks.onReady();
+    if (sessionId === activeSessionId) {
+      callbacks.onReady();
+    }
   });
 
   sock.on("translation-error", (data: { message: string }) => {
-    callbacks.onError(new Error(data.message));
+    if (sessionId === activeSessionId) {
+      callbacks.onError(new Error(data.message));
+    }
   });
 
   const emitStart = () => {
@@ -84,14 +97,18 @@ export function startTranslationSession(
     },
     stop: () => {
       sock.emit("stop-translation");
-      // Delay removing listeners so the final translation response can arrive
+      // Clean up listeners after translation response has time to arrive
+      const stoppedSessionId = sessionId;
       setTimeout(() => {
-        sock.off("translated-audio");
-        sock.off("translated-text");
-        sock.off("input-text");
-        sock.off("translation-ready");
-        sock.off("translation-error");
-      }, 5000);
+        // Only clean up if no new session started
+        if (stoppedSessionId === activeSessionId) {
+          sock.off("translated-audio");
+          sock.off("translated-text");
+          sock.off("input-text");
+          sock.off("translation-ready");
+          sock.off("translation-error");
+        }
+      }, 10000);
     },
   };
 }

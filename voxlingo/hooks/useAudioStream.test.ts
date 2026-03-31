@@ -3,7 +3,7 @@ import { useAudioStream } from "./useAudioStream";
 
 jest.mock("expo-av", () => ({
   Audio: {
-    requestPermissionsAsync: jest.fn().mockResolvedValue({ granted: true }),
+    requestPermissionsAsync: jest.fn().mockResolvedValue({ granted: true, canAskAgain: true }),
     setAudioModeAsync: jest.fn().mockResolvedValue(undefined),
     Recording: jest.fn().mockImplementation(() => ({
       prepareToRecordAsync: jest.fn().mockResolvedValue(undefined),
@@ -12,6 +12,10 @@ jest.mock("expo-av", () => ({
       getURI: jest.fn().mockReturnValue("file:///mock/recording.wav"),
       setOnRecordingStatusUpdate: jest.fn(),
     })),
+    AndroidOutputFormat: { DEFAULT: 0 },
+    AndroidAudioEncoder: { DEFAULT: 0 },
+    IOSOutputFormat: { LINEARPCM: 0 },
+    IOSAudioQuality: { MAX: 127 },
   },
 }));
 

@@ -90,6 +90,17 @@ export default function TravelScreen() {
     }
   }, []);
 
+  // Cancel any in-progress TTS before speaking new text
+  const speakTranslation = useCallback((text: string, lang: string) => {
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.cancel(); // Stop previous speech
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = lang === "zh" ? "zh-CN" : lang;
+      utterance.rate = 0.9;
+      window.speechSynthesis.speak(utterance);
+    }
+  }, []);
+
   const { isRecording, error, startRecording, stopRecording } = useAudioStream({
     onTranslatedAudio: async (audioBase64: string) => {
       try {
@@ -123,14 +134,7 @@ export default function TravelScreen() {
       };
       addTranslation(translation);
       setTranslating(false);
-
-      // Speak the translation using browser TTS
-      if (typeof window !== "undefined" && window.speechSynthesis) {
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = targetLang === "zh" ? "zh-CN" : targetLang;
-        utterance.rate = 0.9;
-        window.speechSynthesis.speak(utterance);
-      }
+      speakTranslation(text, targetLang);
     },
     onInputText: (text: string) => {
       // Server sends full accumulated transcription — upsert to update in place

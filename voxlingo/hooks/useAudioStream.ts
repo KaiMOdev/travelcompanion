@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { AppState, Platform } from "react-native";
+import { AppState, Linking, Platform } from "react-native";
 import { Audio } from "expo-av";
 import { LanguageCode } from "../types";
 import { startTranslationSession } from "../services/gemini";
@@ -21,6 +21,30 @@ export interface AudioStreamState {
   isRecording: boolean;
   error: string | null;
 }
+
+// Shared recording config for iOS and Android — produces 16-bit PCM at 16kHz mono
+const RECORDING_OPTIONS: Audio.RecordingOptions = {
+  android: {
+    extension: ".wav",
+    outputFormat: Audio.AndroidOutputFormat.DEFAULT,
+    audioEncoder: Audio.AndroidAudioEncoder.DEFAULT,
+    sampleRate: 16000,
+    numberOfChannels: 1,
+    bitRate: 256000,
+  },
+  ios: {
+    extension: ".wav",
+    outputFormat: Audio.IOSOutputFormat.LINEARPCM,
+    audioQuality: Audio.IOSAudioQuality.MAX,
+    sampleRate: 16000,
+    numberOfChannels: 1,
+    bitRate: 256000,
+    linearPCMBitDepth: 16,
+    linearPCMIsBigEndian: false,
+    linearPCMIsFloat: false,
+  },
+  web: {},
+};
 
 export function useAudioStream(callbacks: AudioStreamCallbacks) {
   const [state, setState] = useState<AudioStreamState>({
@@ -46,13 +70,13 @@ export function useAudioStream(callbacks: AudioStreamCallbacks) {
       await currentRecording.stopAndUnloadAsync();
       const uri = currentRecording.getURI();
 
-      if (uri) {
+      if (uri && sessionRef.current) {
         const response = await fetch(uri);
         const blob = await response.blob();
         const reader = new FileReader();
         reader.onloadend = () => {
-          const base64 = (reader.result as string).split(",")[1];
-          if (base64 && sessionRef.current) {
+          const base64 = (reader.result as string)?.split(",")[1];
+          if (base64 && base64.length > 100 && sessionRef.current) {
             sessionRef.current.sendAudio(base64);
           }
         };
@@ -64,28 +88,7 @@ export function useAudioStream(callbacks: AudioStreamCallbacks) {
 
       // Start a new recording chunk
       const newRecording = new Audio.Recording();
-      await newRecording.prepareToRecordAsync({
-        android: {
-          extension: ".wav",
-          outputFormat: 2,
-          audioEncoder: 1,
-          sampleRate: 16000,
-          numberOfChannels: 1,
-          bitRate: 256000,
-        },
-        ios: {
-          extension: ".wav",
-          outputFormat: "linearPCM" as any,
-          audioQuality: 127,
-          sampleRate: 16000,
-          numberOfChannels: 1,
-          bitRate: 256000,
-          linearPCMBitDepth: 16,
-          linearPCMIsBigEndian: false,
-          linearPCMIsFloat: false,
-        },
-        web: {},
-      });
+      await newRecording.prepareToRecordAsync(RECORDING_OPTIONS);
       recordingRef.current = newRecording;
       await newRecording.startAsync();
     } catch (e) {
@@ -122,7 +125,7 @@ export function useAudioStream(callbacks: AudioStreamCallbacks) {
           // Web: use Web Audio API for raw PCM capture
           usingWebAudioRef.current = true;
           await startWebAudioCapture((pcmBase64: string) => {
-            if (sessionRef.current) {
+            if (sessionRef.current && pcmBase64.length > 100) {
               sessionRef.current.sendAudio(pcmBase64);
             }
           });
@@ -130,9 +133,20 @@ export function useAudioStream(callbacks: AudioStreamCallbacks) {
           // Native: use expo-av recording
           usingWebAudioRef.current = false;
 
-          const { granted } = await Audio.requestPermissionsAsync();
+          const { granted, canAskAgain } = await Audio.requestPermissionsAsync();
           if (!granted) {
-            setState({ isRecording: false, error: "Microphone permission denied" });
+            if (!canAskAgain) {
+              setState({
+                isRecording: false,
+                error: "Microphone permission denied. Please enable it in your device settings.",
+              });
+              // On Android/iOS, offer to open settings
+              if (Platform.OS !== "web") {
+                Linking.openSettings().catch(() => {});
+              }
+            } else {
+              setState({ isRecording: false, error: "Microphone permission denied" });
+            }
             return;
           }
 
@@ -142,28 +156,7 @@ export function useAudioStream(callbacks: AudioStreamCallbacks) {
           });
 
           const recording = new Audio.Recording();
-          await recording.prepareToRecordAsync({
-            android: {
-              extension: ".wav",
-              outputFormat: 2,
-              audioEncoder: 1,
-              sampleRate: 16000,
-              numberOfChannels: 1,
-              bitRate: 256000,
-            },
-            ios: {
-              extension: ".wav",
-              outputFormat: "linearPCM" as any,
-              audioQuality: 127,
-              sampleRate: 16000,
-              numberOfChannels: 1,
-              bitRate: 256000,
-              linearPCMBitDepth: 16,
-              linearPCMIsBigEndian: false,
-              linearPCMIsFloat: false,
-            },
-            web: {},
-          });
+          await recording.prepareToRecordAsync(RECORDING_OPTIONS);
 
           recordingRef.current = recording;
           await recording.startAsync();
@@ -191,10 +184,8 @@ export function useAudioStream(callbacks: AudioStreamCallbacks) {
   const stopRecording = useCallback(async () => {
     try {
       if (usingWebAudioRef.current) {
-        // Web: stop Web Audio capture
         stopWebAudioCapture();
       } else {
-        // Native: stop expo-av recording
         if (chunkIntervalRef.current) {
           clearInterval(chunkIntervalRef.current);
           chunkIntervalRef.current = null;
@@ -212,8 +203,8 @@ export function useAudioStream(callbacks: AudioStreamCallbacks) {
             const blob = await response.blob();
             const reader = new FileReader();
             reader.onloadend = () => {
-              const base64 = (reader.result as string).split(",")[1];
-              if (base64 && sessionRef.current) {
+              const base64 = (reader.result as string)?.split(",")[1];
+              if (base64 && base64.length > 100 && sessionRef.current) {
                 sessionRef.current.sendAudio(base64);
               }
             };

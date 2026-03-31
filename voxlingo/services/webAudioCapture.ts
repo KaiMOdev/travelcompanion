@@ -89,6 +89,7 @@ export async function startWebAudioCapture(onChunk: OnAudioChunk): Promise<void>
 
 export function stopWebAudioCapture(): void {
   if (scriptProcessor) {
+    scriptProcessor.onaudioprocess = null; // Remove listener to prevent further processing
     scriptProcessor.disconnect();
     scriptProcessor = null;
   }
