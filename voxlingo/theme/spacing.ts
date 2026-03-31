@@ -12,7 +12,7 @@ export const borderRadius = {
   md: 10,
   lg: 14,
   xl: 20,
-  full: 9999,
+  full: 999,
 } as const;
 
 import { Platform } from "react-native";

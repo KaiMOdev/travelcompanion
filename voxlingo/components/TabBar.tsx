@@ -1,12 +1,12 @@
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
-import { Mic, Camera, Users } from "lucide-react-native";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { colors, spacing, borderRadius } from "../theme";
 
-const TAB_ICONS = {
-  index: Mic,
-  camera: Camera,
-  meeting: Users,
+// Use text emoji icons — works reliably on all platforms without SVG dependency issues
+const TAB_EMOJI = {
+  index: "🎤",
+  camera: "📷",
+  meeting: "👥",
 } as const;
 
 const TAB_LABELS = {
@@ -20,11 +20,11 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
     <View style={styles.container}>
       {state.routes.map((route, index) => {
         const isFocused = state.index === index;
-        const routeName = route.name as keyof typeof TAB_ICONS;
-        const Icon = TAB_ICONS[routeName];
+        const routeName = route.name as keyof typeof TAB_EMOJI;
+        const emoji = TAB_EMOJI[routeName];
         const label = TAB_LABELS[routeName];
 
-        if (!Icon || !label) return null;
+        if (!emoji || !label) return null;
 
         const handlePress = () => {
           const event = navigation.emit({
@@ -45,11 +45,7 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
             activeOpacity={0.7}
           >
             <View style={[styles.iconWrap, isFocused && styles.iconWrapActive]}>
-              <Icon
-                size={20}
-                color={isFocused ? colors.white : colors.textDim}
-                strokeWidth={2}
-              />
+              <Text style={styles.iconEmoji}>{emoji}</Text>
             </View>
             <Text style={[styles.label, isFocused && styles.labelActive]}>
               {label}
@@ -82,6 +78,9 @@ const styles = StyleSheet.create({
   },
   iconWrapActive: {
     backgroundColor: colors.accentBlue,
+  },
+  iconEmoji: {
+    fontSize: 18,
   },
   label: {
     fontSize: 10,
