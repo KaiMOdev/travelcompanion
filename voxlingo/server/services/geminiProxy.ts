@@ -18,6 +18,7 @@ export class GeminiLiveSession {
   private accumulatedInput = "";
   private isActive = false; // true while user is recording
   private reconnecting = false;
+  private pendingAudio: Buffer[] = []; // buffer audio during reconnection
 
   constructor(
     sourceLang: string,
@@ -43,6 +44,8 @@ export class GeminiLiveSession {
   }
 
   private async createSession(): Promise<void> {
+    const sourceName = this.sourceLang === "auto" ? "" : getLanguageNameForPrompt(this.sourceLang);
+
     this.session = await this.ai.live.connect({
       model: "gemini-2.5-flash-native-audio-latest",
       config: {
@@ -52,6 +55,9 @@ export class GeminiLiveSession {
             prebuiltVoiceConfig: { voiceName: "Kore" },
           },
         },
+        systemInstruction: sourceName
+          ? { parts: [{ text: `The user is speaking ${sourceName}. Listen carefully and transcribe accurately.` }] }
+          : undefined,
         inputAudioTranscription: {},
       },
       callbacks: {
@@ -75,6 +81,7 @@ export class GeminiLiveSession {
               .then(() => {
                 console.log("[Gemini] reconnected successfully");
                 this.reconnecting = false;
+                this.flushPendingAudio();
               })
               .catch((e) => {
                 console.error("[Gemini] reconnect failed:", e.message);
@@ -97,13 +104,33 @@ export class GeminiLiveSession {
   }
 
   sendAudio(pcmBuffer: Buffer): void {
-    if (!this.session) return;
+    if (!this.session) {
+      // Buffer audio during reconnection so nothing is lost
+      if (this.isActive && this.reconnecting) {
+        this.pendingAudio.push(Buffer.from(pcmBuffer));
+      }
+      return;
+    }
     this.session.sendRealtimeInput({
       audio: {
         data: pcmBuffer.toString("base64"),
         mimeType: "audio/pcm;rate=16000",
       },
     });
+  }
+
+  private flushPendingAudio(): void {
+    if (this.pendingAudio.length === 0 || !this.session) return;
+    console.log(`[Gemini] flushing ${this.pendingAudio.length} buffered audio chunks`);
+    for (const buf of this.pendingAudio) {
+      this.session.sendRealtimeInput({
+        audio: {
+          data: buf.toString("base64"),
+          mimeType: "audio/pcm;rate=16000",
+        },
+      });
+    }
+    this.pendingAudio = [];
   }
 
   async translateAccumulated(): Promise<void> {
@@ -121,12 +148,14 @@ export class GeminiLiveSession {
     console.log(`[Gemini] translating: "${text}" → ${targetName}`);
 
     try {
+      const sourceName = this.sourceLang === "auto" ? "the detected language" : getLanguageNameForPrompt(this.sourceLang);
+
       const result = await this.ai.models.generateContent({
         model: "gemini-2.5-flash",
         contents: [{
           role: "user",
           parts: [{
-            text: `Translate the following text to ${targetName}. Return ONLY the translation, nothing else.${locationContext}\n\n${text}`,
+            text: `The following is a speech-to-text transcription from ${sourceName}. It may contain transcription errors — fix obvious mistakes (e.g. mishearing proper nouns, place names, or company names) before translating. Translate to ${targetName}. Return ONLY the corrected translation, nothing else.${locationContext}\n\n${text}`,
           }],
         }],
       });
@@ -146,6 +175,7 @@ export class GeminiLiveSession {
 
   disconnect(): void {
     this.isActive = false; // Prevent auto-reconnect
+    this.pendingAudio = [];
     if (this.session) {
       try {
         this.session.sendRealtimeInput({ audioStreamEnd: true });
