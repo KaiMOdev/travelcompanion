@@ -3,6 +3,7 @@ import * as Speech from 'expo-speech';
 const LANG_MAP: Record<string, string> = {
   zh: 'zh-CN',
   tl: 'fil',
+  no: 'nb',
 };
 
 export function toBcp47(langCode: string): string {

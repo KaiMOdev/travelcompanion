@@ -18,6 +18,18 @@ export const LANGUAGES: Language[] = [
   { code: 'pl', name: 'Polish' },
   { code: 'nl', name: 'Dutch' },
   { code: 'ar', name: 'Arabic' },
+  { code: 'fr', name: 'French' },
+  { code: 'de', name: 'German' },
+  { code: 'sv', name: 'Swedish' },
+  { code: 'no', name: 'Norwegian' },
+  { code: 'da', name: 'Danish' },
+  { code: 'fi', name: 'Finnish' },
+  { code: 'el', name: 'Greek' },
+  { code: 'cs', name: 'Czech' },
+  { code: 'ro', name: 'Romanian' },
+  { code: 'hu', name: 'Hungarian' },
+  { code: 'uk', name: 'Ukrainian' },
+  { code: 'hr', name: 'Croatian' },
 ];
 
 export const getLanguageName = (code: string): string => {

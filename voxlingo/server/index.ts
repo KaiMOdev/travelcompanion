@@ -12,6 +12,9 @@ const LANG_NAMES: Record<string, string> = {
   ja: 'Japanese', ko: 'Korean', th: 'Thai', vi: 'Vietnamese',
   id: 'Indonesian', tl: 'Tagalog', pt: 'Portuguese', it: 'Italian',
   ru: 'Russian', tr: 'Turkish', pl: 'Polish', nl: 'Dutch', ar: 'Arabic',
+  fr: 'French', de: 'German', sv: 'Swedish', no: 'Norwegian',
+  da: 'Danish', fi: 'Finnish', el: 'Greek', cs: 'Czech',
+  ro: 'Romanian', hu: 'Hungarian', uk: 'Ukrainian', hr: 'Croatian',
 };
 
 export function createApp() {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -19,6 +19,7 @@ export default function TravelScreen() {
   const [targetLang, setTargetLang] = useState('es');
   const { isRecording, isTranslating, translations, error, speakingId, toggleRecord, replay, clearError } =
     useTranslation();
+  const flatListRef = useRef<FlatList>(null);
 
   const handleSwapLanguages = () => {
     setSourceLang(targetLang);
@@ -52,9 +53,15 @@ export default function TravelScreen() {
       </View>
 
       <FlatList
+        ref={flatListRef}
         style={styles.list}
         data={translations}
         keyExtractor={(item: Translation) => item.id}
+        onContentSizeChange={() => {
+          if (translations.length > 0) {
+            flatListRef.current?.scrollToEnd({ animated: true });
+          }
+        }}
         renderItem={({ item }) => (
           <TranslationBubble
             translation={item}
