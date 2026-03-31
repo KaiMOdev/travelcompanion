@@ -7,10 +7,12 @@ dotenv.config();
 
 const GEMINI_MODEL = 'gemini-2.5-flash';
 
-const VALID_LANG_CODES = new Set([
-  'en', 'es', 'zh', 'hi', 'ja', 'ko', 'th', 'vi',
-  'id', 'tl', 'pt', 'it', 'ru', 'tr', 'pl', 'nl', 'ar',
-]);
+const LANG_NAMES: Record<string, string> = {
+  en: 'English', es: 'Spanish', zh: 'Mandarin Chinese', hi: 'Hindi',
+  ja: 'Japanese', ko: 'Korean', th: 'Thai', vi: 'Vietnamese',
+  id: 'Indonesian', tl: 'Tagalog', pt: 'Portuguese', it: 'Italian',
+  ru: 'Russian', tr: 'Turkish', pl: 'Polish', nl: 'Dutch', ar: 'Arabic',
+};
 
 export function createApp() {
   const app = express();
@@ -18,11 +20,8 @@ export function createApp() {
   app.use(cors());
   app.use(express.json({ limit: '10mb' }));
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey && require.main === module) {
-    throw new Error('GEMINI_API_KEY environment variable is required');
-  }
-  const ai = new GoogleGenAI({ apiKey: apiKey || 'test' });
+  const apiKey = process.env.GEMINI_API_KEY || '';
+  const ai = new GoogleGenAI({ apiKey });
 
   app.post('/translate', async (req: Request, res: Response) => {
     const { audio, sourceLang, targetLang } = req.body;
@@ -32,12 +31,14 @@ export function createApp() {
       return;
     }
 
-    if (!VALID_LANG_CODES.has(sourceLang) || !VALID_LANG_CODES.has(targetLang)) {
+    if (!LANG_NAMES[sourceLang] || !LANG_NAMES[targetLang]) {
       res.status(400).json({ error: 'Invalid language code' });
       return;
     }
 
-    const prompt = `Transcribe the following audio spoken in ${sourceLang}. Then translate the transcription to ${targetLang}. Return JSON only: { "originalText": "...", "translatedText": "..." }`;
+    const sourceName = LANG_NAMES[sourceLang];
+    const targetName = LANG_NAMES[targetLang];
+    const prompt = `Transcribe the following audio spoken in ${sourceName}. Then translate the transcription to ${targetName}. The translatedText MUST be in ${targetName}, not English. Return JSON only: { "originalText": "...", "translatedText": "..." }`;
 
     try {
       const result = await ai.models.generateContent({
