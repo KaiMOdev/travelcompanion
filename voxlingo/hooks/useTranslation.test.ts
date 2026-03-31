@@ -13,6 +13,8 @@ jest.mock('../services/translate', () => ({
   }),
 }));
 
+jest.mock('../services/speech', () => ({ speak: jest.fn(), stop: jest.fn() }));
+
 describe('useTranslation', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -62,5 +64,60 @@ describe('useTranslation', () => {
 
     expect(result.current.error).toBe('API error');
     expect(result.current.translations).toHaveLength(0);
+  });
+
+  it('auto-speaks translation after it arrives', async () => {
+    const { speak } = require('../services/speech');
+    const { result } = renderHook(() => useTranslation());
+
+    await act(async () => {
+      await result.current.toggleRecord('en', 'es');
+    });
+    await act(async () => {
+      await result.current.toggleRecord('en', 'es');
+    });
+
+    expect(speak).toHaveBeenCalledWith('hola', 'es', { onDone: expect.any(Function) });
+    expect(result.current.speakingId).toBe(result.current.translations[0].id);
+  });
+
+  it('replay stops current speech and speaks the requested translation', async () => {
+    const { speak, stop } = require('../services/speech');
+    const { result } = renderHook(() => useTranslation());
+
+    await act(async () => {
+      await result.current.toggleRecord('en', 'es');
+    });
+    await act(async () => {
+      await result.current.toggleRecord('en', 'es');
+    });
+
+    const translationId = result.current.translations[0].id;
+
+    await act(async () => {
+      result.current.replay(translationId);
+    });
+
+    expect(stop).toHaveBeenCalled();
+    expect(speak).toHaveBeenLastCalledWith('hola', 'es', { onDone: expect.any(Function) });
+    expect(result.current.speakingId).toBe(translationId);
+  });
+
+  it('clears speakingId when speech finishes', async () => {
+    const { speak } = require('../services/speech');
+    speak.mockImplementation((_text: string, _lang: string, opts: { onDone?: () => void }) => {
+      opts?.onDone?.();
+    });
+
+    const { result } = renderHook(() => useTranslation());
+
+    await act(async () => {
+      await result.current.toggleRecord('en', 'es');
+    });
+    await act(async () => {
+      await result.current.toggleRecord('en', 'es');
+    });
+
+    expect(result.current.speakingId).toBeNull();
   });
 });
