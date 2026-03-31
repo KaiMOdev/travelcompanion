@@ -99,6 +99,7 @@ export class GeminiLiveSession {
 
     if (content.inputTranscription?.text) {
       this.accumulatedInput += content.inputTranscription.text;
+      console.log(`[Gemini] accumulated: "${this.accumulatedInput}"`);
       this.callbacks.onInputText(this.accumulatedInput);
     }
   }
@@ -133,6 +134,18 @@ export class GeminiLiveSession {
     this.pendingAudio = [];
   }
 
+  // Signal that recording has stopped — flush audio buffer and prevent reconnection
+  stopRecording(): void {
+    this.isActive = false; // Prevent auto-reconnect
+    if (this.session) {
+      try {
+        this.session.sendRealtimeInput({ audioStreamEnd: true });
+      } catch {
+        // Session may already be closed
+      }
+    }
+  }
+
   async translateAccumulated(): Promise<void> {
     const text = this.accumulatedInput.trim();
     if (!text) {
@@ -155,7 +168,15 @@ export class GeminiLiveSession {
         contents: [{
           role: "user",
           parts: [{
-            text: `The following is a speech-to-text transcription from ${sourceName}. It may contain transcription errors — fix obvious mistakes (e.g. mishearing proper nouns, place names, or company names) before translating. Translate to ${targetName}. Return ONLY the corrected translation, nothing else.${locationContext}\n\n${text}`,
+            text: `The following is a speech-to-text transcription from ${sourceName}. It likely contains transcription errors from automatic speech recognition. Before translating, correct errors such as:
+- Misheard proper nouns and names (e.g. "Athos" → "Atos", "Santa" → "Sandra")
+- Misheard place names (e.g. "Buddhism" → "Belgium", "boat" → "both")
+- Broken or incomplete words from audio gaps
+- <noise> tags should be ignored
+
+Translate the corrected text to ${targetName}. Return ONLY the translation, nothing else.${locationContext}
+
+Transcription: ${text}`,
           }],
         }],
       });

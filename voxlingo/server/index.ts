@@ -187,6 +187,10 @@ io.on("connection", (socket) => {
   socket.on("stop-translation", async () => {
     const session = activeSessions.get(socket.id);
     if (session) {
+      // Signal end of audio and wait for final transcription fragments
+      session.stopRecording();
+      await new Promise((r) => setTimeout(r, 1500));
+
       // Translate accumulated speech via REST API before disconnecting
       try {
         await session.translateAccumulated();
