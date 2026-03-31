@@ -17,7 +17,7 @@ import { Translation } from '../types';
 export default function TravelScreen() {
   const [sourceLang, setSourceLang] = useState('en');
   const [targetLang, setTargetLang] = useState('es');
-  const { isRecording, isTranslating, translations, error, toggleRecord, clearError } =
+  const { isRecording, isTranslating, translations, error, speakingId, toggleRecord, replay, clearError } =
     useTranslation();
 
   const handleSwapLanguages = () => {
@@ -55,7 +55,13 @@ export default function TravelScreen() {
         style={styles.list}
         data={translations}
         keyExtractor={(item: Translation) => item.id}
-        renderItem={({ item }) => <TranslationBubble translation={item} />}
+        renderItem={({ item }) => (
+          <TranslationBubble
+            translation={item}
+            isSpeaking={item.id === speakingId}
+            onReplay={() => replay(item.id)}
+          />
+        )}
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Text style={styles.emptyText}>Tap the mic and start speaking</Text>
