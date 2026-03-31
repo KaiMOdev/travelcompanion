@@ -39,18 +39,14 @@ export function RecordButton({ isRecording, isTranslating, onPress }: Props) {
     }
   }, [isRecording, pulseAnim]);
 
-  const disabled = isTranslating;
-
   return (
     <Animated.View style={[styles.wrapper, { transform: [{ scale: pulseAnim }] }]}>
       <TouchableOpacity
         style={[
           styles.button,
           isRecording && styles.recording,
-          disabled && styles.disabled,
         ]}
         onPress={onPress}
-        disabled={disabled}
         activeOpacity={0.7}
       >
         <Text style={styles.icon}>{isRecording ? '⏹️' : isTranslating ? '⏳' : '🎙️'}</Text>
@@ -85,9 +81,6 @@ const styles = StyleSheet.create({
   },
   recording: {
     backgroundColor: '#d32f2f',
-  },
-  disabled: {
-    opacity: 0.5,
   },
   icon: {
     fontSize: 32,
