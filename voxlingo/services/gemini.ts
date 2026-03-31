@@ -47,6 +47,7 @@ export function startTranslationSession(
   });
 
   sock.on("translated-text", (data: { text: string }) => {
+    console.log("[gemini.ts] received translated-text:", data.text?.substring(0, 50));
     callbacks.onTranslatedText(data.text);
   });
 

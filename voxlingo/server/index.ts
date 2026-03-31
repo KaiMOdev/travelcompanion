@@ -94,6 +94,7 @@ io.on("connection", (socket) => {
               socket.emit("translated-audio", { audio: audioBase64 });
             },
             onTranslatedText: (text: string) => {
+              console.log(`[DEBUG] emitting translated-text to ${socket.id}, connected: ${socket.connected}`);
               socket.emit("translated-text", { text });
             },
             onInputText: (text: string) => {
