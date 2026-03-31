@@ -123,6 +123,14 @@ export default function TravelScreen() {
       };
       addTranslation(translation);
       setTranslating(false);
+
+      // Speak the translation using browser TTS
+      if (typeof window !== "undefined" && window.speechSynthesis) {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = targetLang === "zh" ? "zh-CN" : targetLang;
+        utterance.rate = 0.9;
+        window.speechSynthesis.speak(utterance);
+      }
     },
     onInputText: (text: string) => {
       // Server sends full accumulated transcription — upsert to update in place
