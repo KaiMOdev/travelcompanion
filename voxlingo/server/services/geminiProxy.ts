@@ -16,6 +16,8 @@ export class GeminiLiveSession {
   private callbacks: GeminiSessionCallbacks;
   private locationHints?: string;
   private accumulatedInput = "";
+  private isActive = false; // true while user is recording
+  private reconnecting = false;
 
   constructor(
     sourceLang: string,
@@ -23,21 +25,24 @@ export class GeminiLiveSession {
     callbacks: GeminiSessionCallbacks,
     locationHints?: string
   ) {
-    this.sourceLang = sourceLang;
-    this.targetLang = targetLang;
-    this.callbacks = callbacks;
-    this.locationHints = locationHints;
-
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       throw new Error("GEMINI_API_KEY environment variable is required");
     }
     this.ai = new GoogleGenAI({ apiKey });
+    this.sourceLang = sourceLang;
+    this.targetLang = targetLang;
+    this.callbacks = callbacks;
+    this.locationHints = locationHints;
   }
 
   async connect(): Promise<void> {
     this.accumulatedInput = "";
+    this.isActive = true;
+    await this.createSession();
+  }
 
+  private async createSession(): Promise<void> {
     this.session = await this.ai.live.connect({
       model: "gemini-2.5-flash-native-audio-latest",
       config: {
@@ -58,11 +63,24 @@ export class GeminiLiveSession {
         },
         onerror: (e: any) => {
           console.error("[Gemini] onerror:", e?.message || "unknown");
-          this.callbacks.onError(new Error(e?.message || "Gemini Live error"));
         },
         onclose: () => {
           console.log("[Gemini] session closed");
           this.session = null;
+          // Auto-reconnect if user is still recording
+          if (this.isActive && !this.reconnecting) {
+            this.reconnecting = true;
+            console.log("[Gemini] auto-reconnecting (user still recording)...");
+            this.createSession()
+              .then(() => {
+                console.log("[Gemini] reconnected successfully");
+                this.reconnecting = false;
+              })
+              .catch((e) => {
+                console.error("[Gemini] reconnect failed:", e.message);
+                this.reconnecting = false;
+              });
+          }
         },
       },
     });
@@ -72,10 +90,8 @@ export class GeminiLiveSession {
     const content = message.serverContent;
     if (!content) return;
 
-    // Accumulate input transcription fragments
     if (content.inputTranscription?.text) {
       this.accumulatedInput += content.inputTranscription.text;
-      // Send accumulated text to frontend for live display
       this.callbacks.onInputText(this.accumulatedInput);
     }
   }
@@ -90,7 +106,6 @@ export class GeminiLiveSession {
     });
   }
 
-  // Called when recording stops — translates accumulated text via REST API
   async translateAccumulated(): Promise<void> {
     const text = this.accumulatedInput.trim();
     if (!text) {
@@ -126,11 +141,11 @@ export class GeminiLiveSession {
       this.callbacks.onError(new Error("Translation failed: " + error.message));
     }
 
-    // Reset for next utterance
     this.accumulatedInput = "";
   }
 
   disconnect(): void {
+    this.isActive = false; // Prevent auto-reconnect
     if (this.session) {
       try {
         this.session.sendRealtimeInput({ audioStreamEnd: true });
