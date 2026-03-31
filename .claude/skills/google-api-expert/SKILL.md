@@ -77,7 +77,7 @@ Adapt code examples to the user's language while preserving the same patterns (e
 
 The travel mode uses a **hybrid approach** combining two Gemini APIs:
 
-1. **Gemini Live API** (`gemini-2.5-flash-native-audio-latest`) — real-time speech-to-text via WebSocket
+1. **Gemini Live API** (`gemini-2.5-flash-native-audio-preview-12-2025`) — real-time speech-to-text via WebSocket
    - Receives PCM audio chunks, returns `inputTranscription` fragments
    - Does NOT reliably follow system instructions for translation
    - Used purely for live transcription display
@@ -106,7 +106,7 @@ On web, `expo-av` records webm/opus (not PCM). The project uses `webAudioCapture
 When a Google API integration isn't working, walk through this systematically:
 
 1. **Is the API key set?** Check the relevant `.env` file
-2. **Is the correct model specified?** Live uses `gemini-2.5-flash-native-audio-latest`, Vision/Translation uses `gemini-2.5-flash`
+2. **Is the correct model specified?** Live uses `gemini-2.5-flash-native-audio-preview-12-2025`, Vision/Translation uses `gemini-2.5-flash`
 3. **Is the request format correct?** Audio must be 16-bit PCM at 16kHz mono; images must be base64 without data URI prefix
 4. **Is the backend running?** Check `http://localhost:3001/health`
 5. **Are you hitting rate limits?** Look for 429 status codes or `RESOURCE_EXHAUSTED` errors

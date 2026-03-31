@@ -37,7 +37,7 @@ describe("GeminiLiveSession", () => {
 
     expect(mockConnect).toHaveBeenCalledTimes(1);
     const callArgs = mockConnect.mock.calls[0][0];
-    expect(callArgs.model).toBe("gemini-2.5-flash-native-audio-latest");
+    expect(callArgs.model).toBe("gemini-2.5-flash-native-audio-preview-12-2025");
     expect(callArgs.config.responseModalities).toContain("audio");
     expect(callArgs.config.speechConfig).toBeDefined();
     expect(callArgs.config.inputAudioTranscription).toBeDefined();

@@ -23,6 +23,7 @@ export class GeminiLiveSession {
   private reconnecting = false;
   private reconnectAttempts = 0;
   private pendingAudio: Buffer[] = [];
+  private resumptionHandle?: string;
 
   constructor(
     sourceLang: string,
@@ -51,20 +52,27 @@ export class GeminiLiveSession {
   private async createSession(): Promise<void> {
     const sourceName = this.sourceLang === "auto" ? "" : getLanguageNameForPrompt(this.sourceLang);
 
-    const connectPromise = this.ai.live.connect({
-      model: "gemini-2.5-flash-native-audio-latest",
-      config: {
-        responseModalities: [Modality.AUDIO],
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: { voiceName: "Kore" },
-          },
+    const config: any = {
+      responseModalities: [Modality.AUDIO],
+      speechConfig: {
+        voiceConfig: {
+          prebuiltVoiceConfig: { voiceName: "Kore" },
         },
-        systemInstruction: sourceName
-          ? { parts: [{ text: `The user is speaking ${sourceName}. Listen carefully and transcribe accurately.` }] }
-          : undefined,
-        inputAudioTranscription: {},
       },
+      systemInstruction: sourceName
+        ? { parts: [{ text: `The user is speaking ${sourceName}. Listen carefully and transcribe accurately.` }] }
+        : undefined,
+      inputAudioTranscription: {},
+    };
+
+    // Use session resumption handle if reconnecting
+    if (this.resumptionHandle) {
+      config.sessionResumption = { handle: this.resumptionHandle };
+    }
+
+    const connectPromise = this.ai.live.connect({
+      model: "gemini-2.5-flash-native-audio-preview-12-2025",
+      config,
       callbacks: {
         onopen: () => {
           console.log("Gemini Live session opened");
@@ -115,6 +123,16 @@ export class GeminiLiveSession {
   }
 
   private handleMessage(message: any): void {
+    // Capture session resumption handle for reconnection
+    if (message.sessionResumptionUpdate?.newHandle) {
+      this.resumptionHandle = message.sessionResumptionUpdate.newHandle;
+    }
+
+    // Handle GoAway — server is about to disconnect
+    if (message.goAway) {
+      console.log("[Gemini] GoAway received, will reconnect with resumption handle");
+    }
+
     const content = message.serverContent;
     if (!content) return;
 

@@ -37,7 +37,8 @@ export async function startWebAudioCapture(onChunk: OnAudioChunk): Promise<void>
   sourceNode = audioContext.createMediaStreamSource(mediaStream);
 
   // ScriptProcessorNode captures raw PCM float samples
-  const bufferSize = 4096;
+  // 512 samples at 16kHz = 32ms per chunk (Gemini recommends 20-40ms)
+  const bufferSize = 512;
   scriptProcessor = audioContext.createScriptProcessor(bufferSize, 1, 1);
 
   let chunkCount = 0;
