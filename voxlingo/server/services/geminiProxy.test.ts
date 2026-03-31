@@ -7,9 +7,14 @@ const mockConnect = jest.fn().mockResolvedValue({
   close: mockClose,
 });
 
+const mockGenerateContent = jest.fn().mockResolvedValue({
+  text: "Hola, mundo",
+});
+
 jest.mock("@google/genai", () => ({
   GoogleGenAI: jest.fn().mockImplementation(() => ({
     live: { connect: mockConnect },
+    models: { generateContent: mockGenerateContent },
   })),
   Modality: { AUDIO: "audio" },
 }));
@@ -34,7 +39,9 @@ describe("GeminiLiveSession", () => {
     const callArgs = mockConnect.mock.calls[0][0];
     expect(callArgs.model).toBe("gemini-2.5-flash-native-audio-latest");
     expect(callArgs.config.responseModalities).toContain("audio");
-    expect(callArgs.config.systemInstruction).toBeDefined();
+    expect(callArgs.config.speechConfig).toBeDefined();
+    expect(callArgs.config.inputAudioTranscription).toBeDefined();
+    expect(callArgs.config.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName).toBe("Kore");
   });
 
   it("sends audio chunks as base64 PCM", async () => {
@@ -71,16 +78,14 @@ describe("GeminiLiveSession", () => {
     expect(mockClose).toHaveBeenCalledTimes(1);
   });
 
-  it("throws if GEMINI_API_KEY is missing", async () => {
+  it("throws if GEMINI_API_KEY is missing", () => {
     delete process.env.GEMINI_API_KEY;
 
-    const session = new GeminiLiveSession("en", "es", {
+    expect(() => new GeminiLiveSession("en", "es", {
       onTranslatedAudio: jest.fn(),
       onTranslatedText: jest.fn(),
       onInputText: jest.fn(),
       onError: jest.fn(),
-    });
-
-    await expect(session.connect()).rejects.toThrow("GEMINI_API_KEY");
+    })).toThrow("GEMINI_API_KEY");
   });
 });

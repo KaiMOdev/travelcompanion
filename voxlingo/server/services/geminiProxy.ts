@@ -10,10 +10,12 @@ export interface GeminiSessionCallbacks {
 
 export class GeminiLiveSession {
   private session: any = null;
+  private ai: GoogleGenAI;
   private sourceLang: string;
   private targetLang: string;
   private callbacks: GeminiSessionCallbacks;
   private locationHints?: string;
+  private accumulatedInput = "";
 
   constructor(
     sourceLang: string,
@@ -25,65 +27,42 @@ export class GeminiLiveSession {
     this.targetLang = targetLang;
     this.callbacks = callbacks;
     this.locationHints = locationHints;
-  }
 
-  async connect(): Promise<void> {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       throw new Error("GEMINI_API_KEY environment variable is required");
     }
+    this.ai = new GoogleGenAI({ apiKey });
+  }
 
-    const ai = new GoogleGenAI({ apiKey });
-    const sourceName = this.sourceLang === "auto" ? "auto" : getLanguageNameForPrompt(this.sourceLang);
-    const targetName = getLanguageNameForPrompt(this.targetLang);
+  async connect(): Promise<void> {
+    this.accumulatedInput = "";
 
-    const locationContext = this.locationHints
-      ? ` ${this.locationHints} Use this location context to adapt phrasing, formality, and cultural references appropriately.`
-      : "";
-
-    let systemPrompt: string;
-    if (this.sourceLang === "auto") {
-      systemPrompt = `You are a real-time meeting translator. Listen to continuous audio. For each utterance: detect the speaker (label as Speaker 1, Speaker 2, etc. based on voice characteristics), detect the language they are speaking, provide the original text, and translate to ${targetName}. Respond with the translation spoken in ${targetName}.${locationContext}`;
-    } else {
-      systemPrompt = `You are a real-time voice translator. The user will speak in ${sourceName}. Translate everything they say into ${targetName}. Speak the translation naturally. Do not add commentary or explanations — only translate.${locationContext}`;
-    }
-
-    this.session = await ai.live.connect({
+    this.session = await this.ai.live.connect({
       model: "gemini-2.5-flash-native-audio-latest",
       config: {
         responseModalities: [Modality.AUDIO],
-        systemInstruction: {
-          parts: [
-            {
-              text: systemPrompt,
-            },
-          ],
+        speechConfig: {
+          voiceConfig: {
+            prebuiltVoiceConfig: { voiceName: "Kore" },
+          },
         },
+        inputAudioTranscription: {},
       },
       callbacks: {
         onopen: () => {
           console.log("Gemini Live session opened");
         },
         onmessage: (message: any) => {
-          console.log("[Gemini] onmessage keys:", Object.keys(message || {}));
           this.handleMessage(message);
         },
         onerror: (e: any) => {
-          console.error("[Gemini] onerror:", JSON.stringify(e, null, 2));
-          const msg = e?.message || "";
-          if (msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED") || msg.includes("quota")) {
-            this.callbacks.onError(new Error("Gemini API quota exceeded. Free tier limit reached — try again later or enable billing."));
-          } else {
-            this.callbacks.onError(new Error(msg || "Gemini Live error"));
-          }
+          console.error("[Gemini] onerror:", e?.message || "unknown");
+          this.callbacks.onError(new Error(e?.message || "Gemini Live error"));
         },
         onclose: () => {
           console.log("[Gemini] session closed");
-          // If session closes immediately with no messages, likely a quota/auth issue
-          if (this.session) {
-            this.callbacks.onError(new Error("Translation session ended unexpectedly. This may be due to API quota limits — check your Gemini API usage."));
-            this.session = null;
-          }
+          this.session = null;
         },
       },
     });
@@ -93,31 +72,16 @@ export class GeminiLiveSession {
     const content = message.serverContent;
     if (!content) return;
 
-    if (content.modelTurn?.parts) {
-      for (const part of content.modelTurn.parts) {
-        if (part.inlineData?.data) {
-          this.callbacks.onTranslatedAudio(part.inlineData.data);
-        }
-        if (part.text) {
-          this.callbacks.onTranslatedText(part.text);
-        }
-      }
-    }
-
-    if (content.outputTranscription?.text) {
-      this.callbacks.onTranslatedText(content.outputTranscription.text);
-    }
-
+    // Accumulate input transcription fragments
     if (content.inputTranscription?.text) {
-      this.callbacks.onInputText(content.inputTranscription.text);
+      this.accumulatedInput += content.inputTranscription.text;
+      // Send accumulated text to frontend for live display
+      this.callbacks.onInputText(this.accumulatedInput);
     }
   }
 
   sendAudio(pcmBuffer: Buffer): void {
-    if (!this.session) {
-      console.warn("[Gemini] sendAudio called but session is closed");
-      return;
-    }
+    if (!this.session) return;
     this.session.sendRealtimeInput({
       audio: {
         data: pcmBuffer.toString("base64"),
@@ -126,8 +90,53 @@ export class GeminiLiveSession {
     });
   }
 
+  // Called when recording stops — translates accumulated text via REST API
+  async translateAccumulated(): Promise<void> {
+    const text = this.accumulatedInput.trim();
+    if (!text) {
+      console.log("[Gemini] no accumulated text to translate");
+      return;
+    }
+
+    const targetName = getLanguageNameForPrompt(this.targetLang);
+    const locationContext = this.locationHints
+      ? ` The user is currently ${this.locationHints}`
+      : "";
+
+    console.log(`[Gemini] translating: "${text}" → ${targetName}`);
+
+    try {
+      const result = await this.ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: [{
+          role: "user",
+          parts: [{
+            text: `Translate the following text to ${targetName}. Return ONLY the translation, nothing else.${locationContext}\n\n${text}`,
+          }],
+        }],
+      });
+
+      const translation = result.text?.trim();
+      if (translation) {
+        console.log(`[Gemini] translation: "${translation}"`);
+        this.callbacks.onTranslatedText(translation);
+      }
+    } catch (error: any) {
+      console.error("[Gemini] translation error:", error.message);
+      this.callbacks.onError(new Error("Translation failed: " + error.message));
+    }
+
+    // Reset for next utterance
+    this.accumulatedInput = "";
+  }
+
   disconnect(): void {
     if (this.session) {
+      try {
+        this.session.sendRealtimeInput({ audioStreamEnd: true });
+      } catch {
+        // Ignore cleanup errors
+      }
       this.session.close();
       this.session = null;
     }

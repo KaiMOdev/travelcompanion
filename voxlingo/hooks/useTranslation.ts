@@ -9,6 +9,7 @@ export interface TranslationState {
 
 type TranslationAction =
   | { type: "ADD_TRANSLATION"; translation: Translation }
+  | { type: "UPSERT_TRANSLATION"; translation: Translation }
   | { type: "CLEAR" }
   | { type: "SET_TRANSLATING"; isTranslating: boolean }
   | { type: "SET_ERROR"; error: string | null };
@@ -17,6 +18,15 @@ function translationReducer(state: TranslationState, action: TranslationAction):
   switch (action.type) {
     case "ADD_TRANSLATION":
       return { ...state, translations: [...state.translations, action.translation] };
+    case "UPSERT_TRANSLATION": {
+      const idx = state.translations.findIndex((t) => t.id === action.translation.id);
+      if (idx >= 0) {
+        const updated = [...state.translations];
+        updated[idx] = action.translation;
+        return { ...state, translations: updated };
+      }
+      return { ...state, translations: [...state.translations, action.translation] };
+    }
     case "CLEAR":
       return { translations: [], isTranslating: false, error: null };
     case "SET_TRANSLATING":
@@ -40,6 +50,10 @@ export function useTranslation(
     dispatch({ type: "ADD_TRANSLATION", translation });
   }, []);
 
+  const upsertTranslation = useCallback((translation: Translation) => {
+    dispatch({ type: "UPSERT_TRANSLATION", translation });
+  }, []);
+
   const clearTranslations = useCallback(() => {
     dispatch({ type: "CLEAR" });
   }, []);
@@ -57,6 +71,7 @@ export function useTranslation(
     isTranslating: state.isTranslating,
     error: state.error,
     addTranslation,
+    upsertTranslation,
     clearTranslations,
     setTranslating,
     setError,

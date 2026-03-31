@@ -8,6 +8,7 @@ import {
   FlatList,
   StyleSheet,
   SafeAreaView,
+  Platform,
 } from "react-native";
 import { Audio } from "expo-av";
 import { ArrowLeftRight, Settings, List } from "lucide-react-native";
@@ -42,22 +43,69 @@ export default function TravelScreen() {
     translations,
     isTranslating,
     addTranslation,
+    upsertTranslation,
     clearTranslations,
     setTranslating,
   } = useTranslation(sourceLang, targetLang);
 
+  const playAudioWeb = useCallback(async (pcmBase64: string) => {
+    try {
+      const pcmBytes = Uint8Array.from(atob(pcmBase64), (c) => c.charCodeAt(0));
+      const sampleRate = 24000; // Gemini outputs 24kHz audio
+      const numChannels = 1;
+      const bitsPerSample = 16;
+      const dataLength = pcmBytes.length;
+      const headerLength = 44;
+      const wav = new ArrayBuffer(headerLength + dataLength);
+      const view = new DataView(wav);
+
+      // WAV header
+      const writeString = (offset: number, str: string) => {
+        for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+      };
+      writeString(0, "RIFF");
+      view.setUint32(4, 36 + dataLength, true);
+      writeString(8, "WAVE");
+      writeString(12, "fmt ");
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true); // PCM
+      view.setUint16(22, numChannels, true);
+      view.setUint32(24, sampleRate, true);
+      view.setUint32(28, sampleRate * numChannels * (bitsPerSample / 8), true);
+      view.setUint16(32, numChannels * (bitsPerSample / 8), true);
+      view.setUint16(34, bitsPerSample, true);
+      writeString(36, "data");
+      view.setUint32(40, dataLength, true);
+      new Uint8Array(wav, headerLength).set(pcmBytes);
+
+      const audioCtx = new AudioContext({ sampleRate });
+      const audioBuffer = await audioCtx.decodeAudioData(wav);
+      const source = audioCtx.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(audioCtx.destination);
+      source.start();
+      source.onended = () => audioCtx.close();
+    } catch (e) {
+      console.warn("Web audio playback error:", e);
+    }
+  }, []);
+
   const { isRecording, error, startRecording, stopRecording } = useAudioStream({
     onTranslatedAudio: async (audioBase64: string) => {
       try {
-        const { sound } = await Audio.Sound.createAsync({
-          uri: `data:audio/pcm;base64,${audioBase64}`,
-        });
-        await sound.playAsync();
-        sound.setOnPlaybackStatusUpdate((status) => {
-          if ("didJustFinish" in status && status.didJustFinish) {
-            sound.unloadAsync();
-          }
-        });
+        if (Platform.OS === "web") {
+          await playAudioWeb(audioBase64);
+        } else {
+          const { sound } = await Audio.Sound.createAsync({
+            uri: `data:audio/pcm;base64,${audioBase64}`,
+          });
+          await sound.playAsync();
+          sound.setOnPlaybackStatusUpdate((status) => {
+            if ("didJustFinish" in status && status.didJustFinish) {
+              sound.unloadAsync();
+            }
+          });
+        }
       } catch (e) {
         console.warn("Audio playback error:", e);
       }
@@ -77,8 +125,9 @@ export default function TravelScreen() {
       setTranslating(false);
     },
     onInputText: (text: string) => {
-      const translation: Translation = {
-        id: `input-${Date.now()}`,
+      // Server sends full accumulated transcription — upsert to update in place
+      upsertTranslation({
+        id: "live-input",
         sourceLang,
         targetLang,
         originalText: text,
@@ -86,8 +135,7 @@ export default function TravelScreen() {
         mode: "travel",
         timestamp: Date.now(),
         cached: false,
-      };
-      addTranslation(translation);
+      });
     },
     onError: (err: Error) => {
       console.error("Translation error:", err);

@@ -83,11 +83,14 @@ export function startTranslationSession(
     },
     stop: () => {
       sock.emit("stop-translation");
-      sock.off("translated-audio");
-      sock.off("translated-text");
-      sock.off("input-text");
-      sock.off("translation-ready");
-      sock.off("translation-error");
+      // Delay removing listeners so the final translation response can arrive
+      setTimeout(() => {
+        sock.off("translated-audio");
+        sock.off("translated-text");
+        sock.off("input-text");
+        sock.off("translation-ready");
+        sock.off("translation-error");
+      }, 5000);
     },
   };
 }

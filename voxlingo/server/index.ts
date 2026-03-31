@@ -120,8 +120,8 @@ io.on("connection", (socket) => {
     }
   );
 
+  let audioChunkCount = 0;
   socket.on("audio-stream", (data: { audio: string }) => {
-    console.log(`[DEBUG] audio-stream: ${data.audio?.length || 0} chars from ${socket.id}`);
     if (!checkSocketRateLimit(socket.id)) {
       socket.emit("translation-error", { message: "Audio stream rate limit exceeded" });
       return;
@@ -129,6 +129,15 @@ io.on("connection", (socket) => {
     const session = activeSessions.get(socket.id);
     if (session) {
       const buffer = Buffer.from(data.audio, "base64");
+      // Log first 3 chunks: size and whether it contains non-zero audio
+      if (audioChunkCount < 3) {
+        let nonZero = 0;
+        for (let i = 0; i < Math.min(buffer.length, 200); i++) {
+          if (buffer[i] !== 0) nonZero++;
+        }
+        console.log(`[DEBUG] audio chunk ${audioChunkCount}: ${buffer.length} bytes, nonZero in first 200: ${nonZero}`);
+        audioChunkCount++;
+      }
       session.sendAudio(buffer);
     }
   });
@@ -174,9 +183,15 @@ io.on("connection", (socket) => {
     }
   );
 
-  socket.on("stop-translation", () => {
+  socket.on("stop-translation", async () => {
     const session = activeSessions.get(socket.id);
     if (session) {
+      // Translate accumulated speech via REST API before disconnecting
+      try {
+        await session.translateAccumulated();
+      } catch (e: any) {
+        console.error("[stop] translation error:", e.message);
+      }
       session.disconnect();
       activeSessions.delete(socket.id);
       sessionTimestamps.delete(socket.id);

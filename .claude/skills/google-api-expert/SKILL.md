@@ -73,15 +73,45 @@ When the user works in a language other than TypeScript/Node.js:
 
 Adapt code examples to the user's language while preserving the same patterns (error handling, key management, streaming approach).
 
+## Hybrid Translation Architecture
+
+The travel mode uses a **hybrid approach** combining two Gemini APIs:
+
+1. **Gemini Live API** (`gemini-2.5-flash-native-audio-latest`) — real-time speech-to-text via WebSocket
+   - Receives PCM audio chunks, returns `inputTranscription` fragments
+   - Does NOT reliably follow system instructions for translation
+   - Used purely for live transcription display
+
+2. **Gemini REST API** (`gemini-2.5-flash`) — text translation when recording stops
+   - Receives accumulated transcription text, returns translation
+   - Follows instructions reliably
+   - Called via `translateAccumulated()` in `GeminiLiveSession`
+
+The Live API `native-audio` models are conversational — they transcribe input but don't translate on command. The REST API handles the actual translation step.
+
+### Required Live API Config
+```typescript
+config: {
+  responseModalities: [Modality.AUDIO],
+  speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Kore" } } },
+  inputAudioTranscription: {},   // Required for transcription
+}
+```
+
+### Web Audio Capture
+On web, `expo-av` records webm/opus (not PCM). The project uses `webAudioCapture.ts` with the Web Audio API to capture real 16-bit PCM at 16kHz mono — the format Gemini expects.
+
 ## Debugging Checklist
 
 When a Google API integration isn't working, walk through this systematically:
 
 1. **Is the API key set?** Check the relevant `.env` file
-2. **Is the correct model specified?** Gemini Live uses `gemini-2.5-flash-native-audio-latest`, Vision uses `gemini-2.5-flash`
+2. **Is the correct model specified?** Live uses `gemini-2.5-flash-native-audio-latest`, Vision/Translation uses `gemini-2.5-flash`
 3. **Is the request format correct?** Audio must be 16-bit PCM at 16kHz mono; images must be base64 without data URI prefix
 4. **Is the backend running?** Check `http://localhost:3001/health`
 5. **Are you hitting rate limits?** Look for 429 status codes or `RESOURCE_EXHAUSTED` errors
 6. **Is Firebase initialized?** `initializeFirebase()` must be called before any Firebase operation
 7. **Is the Firestore query correct?** Check collection paths — this project uses subcollections under `users/{uid}/`
 8. **Network issues?** Check CORS config on backend, verify Socket.io transport is WebSocket not polling
+9. **Live session closes immediately?** Check model name is valid (list with `ai.models.list()`), check `speechConfig` is set, check billing is enabled
+10. **Transcription works but no translation?** This is expected — use the hybrid approach (Live for STT, REST for translation)

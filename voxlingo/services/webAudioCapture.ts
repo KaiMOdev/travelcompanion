@@ -29,16 +29,42 @@ export async function startWebAudioCapture(onChunk: OnAudioChunk): Promise<void>
     },
   });
 
-  // Create audio context at 16kHz
+  // Create audio context — request 16kHz but browser may give different rate
   audioContext = new AudioContext({ sampleRate: 16000 });
+  const actualRate = audioContext.sampleRate;
+  console.log(`[WebAudio] Requested 16kHz, got ${actualRate}Hz`);
+
   sourceNode = audioContext.createMediaStreamSource(mediaStream);
 
   // ScriptProcessorNode captures raw PCM float samples
-  // Buffer size of 4096 at 16kHz = ~256ms per chunk
-  scriptProcessor = audioContext.createScriptProcessor(4096, 1, 1);
+  const bufferSize = 4096;
+  scriptProcessor = audioContext.createScriptProcessor(bufferSize, 1, 1);
 
+  let chunkCount = 0;
   scriptProcessor.onaudioprocess = (event) => {
-    const float32 = event.inputBuffer.getChannelData(0);
+    let float32 = event.inputBuffer.getChannelData(0);
+
+    // If browser gave us a different sample rate, downsample to 16kHz
+    if (actualRate !== 16000) {
+      const ratio = actualRate / 16000;
+      const newLength = Math.floor(float32.length / ratio);
+      const downsampled = new Float32Array(newLength);
+      for (let i = 0; i < newLength; i++) {
+        downsampled[i] = float32[Math.floor(i * ratio)];
+      }
+      float32 = downsampled;
+    }
+
+    // Log audio level for first few chunks to verify mic is capturing
+    if (chunkCount < 5) {
+      let maxVal = 0;
+      for (let i = 0; i < float32.length; i++) {
+        const abs = Math.abs(float32[i]);
+        if (abs > maxVal) maxVal = abs;
+      }
+      console.log(`[WebAudio] chunk ${chunkCount}: samples=${float32.length}, peak=${maxVal.toFixed(4)}`);
+      chunkCount++;
+    }
 
     // Convert float32 [-1, 1] to int16 [-32768, 32767]
     const int16 = new Int16Array(float32.length);
