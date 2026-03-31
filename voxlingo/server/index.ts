@@ -7,19 +7,33 @@ dotenv.config();
 
 const GEMINI_MODEL = 'gemini-2.5-flash';
 
+const VALID_LANG_CODES = new Set([
+  'en', 'es', 'zh', 'hi', 'ja', 'ko', 'th', 'vi',
+  'id', 'tl', 'pt', 'it', 'ru', 'tr', 'pl', 'nl', 'ar',
+]);
+
 export function createApp() {
   const app = express();
 
   app.use(cors());
   app.use(express.json({ limit: '10mb' }));
 
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey && require.main === module) {
+    throw new Error('GEMINI_API_KEY environment variable is required');
+  }
+  const ai = new GoogleGenAI({ apiKey: apiKey || 'test' });
 
   app.post('/translate', async (req: Request, res: Response) => {
     const { audio, sourceLang, targetLang } = req.body;
 
     if (!audio || !sourceLang || !targetLang) {
       res.status(400).json({ error: 'Missing required fields: audio, sourceLang, targetLang' });
+      return;
+    }
+
+    if (!VALID_LANG_CODES.has(sourceLang) || !VALID_LANG_CODES.has(targetLang)) {
+      res.status(400).json({ error: 'Invalid language code' });
       return;
     }
 
