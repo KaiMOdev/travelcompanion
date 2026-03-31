@@ -1,104 +1,71 @@
-# VoxLingo — Real-time Voice-to-Voice Translation App
+# VoxLingo — Real-time Voice Translation App (MVP)
 
 ## Project overview
 
-VoxLingo is a mobile app (iOS + Android) that provides real-time voice-to-voice translation, camera-based text translation, and live meeting subtitles. Built with React Native (Expo) and powered by Google's Gemini API.
+VoxLingo is a voice translation app. Tap to record, get the transcription and translation displayed as chat bubbles. Built with Expo (React Native + TypeScript) and powered by Google Gemini REST API via a thin backend proxy.
 
 ## Tech stack
 
-- **Frontend**: React Native with Expo (TypeScript)
+- **Frontend**: React Native with Expo SDK 54 (TypeScript)
 - **Backend**: Node.js + Express (TypeScript)
-- **AI/Translation**: Google Gemini Live API (voice-to-voice), Gemini Vision API (camera OCR)
-- **Location**: Google Maps Grounding API (context-aware translations)
-- **Auth & DB**: Firebase Auth + Firestore
-- **Real-time**: WebSocket (socket.io) between app and backend
-- **Audio**: expo-av for recording/playback, WebSocket streaming to Gemini Live API
+- **AI/Translation**: Google Gemini REST API (`gemini-2.5-flash`, `generateContent`)
+- **Audio**: expo-av (native), Web Audio API (web)
 
 ## Project structure
 
 ```
 voxlingo/
-├── app/                    # React Native (Expo Router)
-│   ├── (tabs)/             # Tab-based navigation
-│   │   ├── travel.tsx      # Two-person voice translation
-│   │   ├── camera.tsx      # Camera text translation
-│   │   └── meeting.tsx     # Multi-speaker live subtitles
-│   ├── _layout.tsx         # Root layout with tab navigator
-│   └── settings.tsx        # Language preferences, history
-├── components/             # Shared UI components
-│   ├── AudioWaveform.tsx   # Voice visualization
-│   ├── LanguagePicker.tsx  # Language selection dropdown
-│   ├── TranslationBubble.tsx
-│   └── SubtitleOverlay.tsx
-├── services/               # API integrations
-│   ├── gemini.ts           # Gemini Live API WebSocket client
-│   ├── vision.ts           # Gemini Vision API for camera
-│   ├── maps.ts             # Google Maps Grounding
-│   └── firebase.ts         # Auth + Firestore
-├── hooks/                  # Custom React hooks
-│   ├── useAudioStream.ts   # Mic recording + streaming
-│   ├── useTranslation.ts   # Translation state management
-│   └── useLanguageDetect.ts
-├── server/                 # Node.js backend
-│   ├── index.ts            # Express + WebSocket server
-│   ├── routes/
-│   │   ├── auth.ts
-│   │   └── translate.ts
-│   ├── middleware/
-│   │   └── rateLimit.ts
-│   └── services/
-│       └── geminiProxy.ts  # Proxies Gemini API (hides API key)
-├── CLAUDE.md
+├── app/
+│   ├── _layout.tsx          # Root layout (single screen, no tabs)
+│   └── index.tsx            # Travel screen
+├── components/
+│   ├── LanguagePicker.tsx   # Language dropdown
+│   ├── TranslationBubble.tsx # Chat bubble
+│   ├── RecordButton.tsx     # Tap-to-start/stop mic
+│   └── ErrorBanner.tsx      # Auto-dismiss error
+├── services/
+│   ├── audio.ts             # Platform-split audio recording
+│   └── translate.ts         # POST to backend
+├── hooks/
+│   └── useTranslation.ts    # Recording state + translation list
+├── constants/
+│   └── languages.ts         # 17 supported languages
+├── types/
+│   └── index.ts             # Shared types
+├── server/
+│   ├── index.ts             # Express server, POST /translate
+│   └── .env                 # GEMINI_API_KEY, PORT=3001
+├── app.json
 ├── package.json
-└── tsconfig.json
+└── firestore.rules          # Kept for post-MVP
 ```
 
 ## Commands
 
 - `npx expo start` — Start Expo dev server
-- `npx expo start --ios` — Run on iOS simulator
-- `npx expo start --android` — Run on Android emulator
 - `cd server && npm run dev` — Start backend with nodemon
 - `npm test` — Run Jest tests
-- `npm run lint` — ESLint check
 - `npm run typecheck` — TypeScript type check
 
 ## Code style
 
 - TypeScript strict mode, no `any` types
-- Functional components with hooks only (no class components)
+- Functional components with hooks only
 - Named exports for components, default exports for screens
-- Use `const` over `let`, never `var`
-- Error handling: always wrap API calls in try/catch with user-friendly error messages
-- Use React Native StyleSheet.create() for styles, not inline objects
-- Dutch comments are fine, English variable/function names
+- `StyleSheet.create()` for styles — no inline objects
+- Emoji for icons (no SVG, no lucide)
+- Platform-specific shadows: `elevation` on Android, `shadow*` on iOS
 
-## API key management
+## Constraints
 
-- NEVER put API keys in frontend code
-- All Gemini API calls go through the Node.js backend
-- Backend reads keys from environment variables (.env)
-- .env is in .gitignore
-
-## Key architectural decisions
-
-- Audio streaming uses WebSocket (not REST) for low latency
-- Gemini Live API handles speech-to-speech natively (no separate STT → translate → TTS pipeline)
-- Camera translation uses Gemini's multimodal vision (send image, get translation)
-- Firebase Firestore for translation history (offline-capable)
-- Language detection is automatic via Gemini (no manual switching needed)
+- **SDK 54 only** — SDK 55 removed ExponentAV from Expo Go
+- **No react-native-reanimated** — crashes Expo Go
+- **No SVG icons in navigation** — crashes on Android
+- **expo-av on web** produces webm, not PCM — use Web Audio API
+- **API keys** stay in `server/.env`, never in frontend code
 
 ## Testing
 
-- Jest for unit tests, React Native Testing Library for component tests
-- Test files go next to source files: `Component.test.tsx`
-- Run `npm test` before committing
-- Mock all API calls in tests (never hit real Gemini API in tests)
-
-## Important gotchas
-
-- Gemini Live API uses WebSocket, not REST — see https://ai.google.dev/gemini-api/docs/live-api
-- Audio format for Gemini: 16-bit PCM, 16kHz mono
-- expo-av recording config must match Gemini's expected format
-- Maps Grounding requires separate billing enablement in Google Cloud Console
-- Rate limit Gemini API calls on backend (free tier = 15 RPM for Flash)
+- Jest for unit tests
+- Test files next to source: `*.test.ts` / `*.test.tsx`
+- Mock all API calls in tests
