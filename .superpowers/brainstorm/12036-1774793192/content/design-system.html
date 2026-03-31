@@ -1,0 +1,234 @@
+<h2>Design System Foundation</h2>
+<p class="subtitle">Color tokens, typography scale, spacing, shadows, and radii — the building blocks for every screen</p>
+
+<!-- COLOR TOKENS -->
+<div class="section">
+  <h3>Color Tokens</h3>
+
+  <div class="label" style="margin-bottom: 8px;">Backgrounds</div>
+  <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;">
+    <div style="text-align: center;">
+      <div style="width: 64px; height: 64px; border-radius: 10px; background: #0f172a; border: 1px solid #1e293b;"></div>
+      <div style="color: #aaa; font-size: 10px; margin-top: 4px;">bg-primary<br/>#0f172a</div>
+    </div>
+    <div style="text-align: center;">
+      <div style="width: 64px; height: 64px; border-radius: 10px; background: #1e293b;"></div>
+      <div style="color: #aaa; font-size: 10px; margin-top: 4px;">bg-surface<br/>#1e293b</div>
+    </div>
+    <div style="text-align: center;">
+      <div style="width: 64px; height: 64px; border-radius: 10px; background: #334155;"></div>
+      <div style="color: #aaa; font-size: 10px; margin-top: 4px;">bg-elevated<br/>#334155</div>
+    </div>
+    <div style="text-align: center;">
+      <div style="width: 64px; height: 64px; border-radius: 10px; background: #0f172a; border: 1px solid #334155;"></div>
+      <div style="color: #aaa; font-size: 10px; margin-top: 4px;">bg-overlay<br/>rgba(15,23,42,0.85)</div>
+    </div>
+  </div>
+
+  <div class="label" style="margin-bottom: 8px;">Accent Gradient</div>
+  <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;">
+    <div style="text-align: center;">
+      <div style="width: 64px; height: 64px; border-radius: 10px; background: #3b82f6;"></div>
+      <div style="color: #aaa; font-size: 10px; margin-top: 4px;">accent-blue<br/>#3b82f6</div>
+    </div>
+    <div style="text-align: center;">
+      <div style="width: 64px; height: 64px; border-radius: 10px; background: linear-gradient(135deg, #3b82f6, #06b6d4);"></div>
+      <div style="color: #aaa; font-size: 10px; margin-top: 4px;">accent-gradient<br/>blue→cyan</div>
+    </div>
+    <div style="text-align: center;">
+      <div style="width: 64px; height: 64px; border-radius: 10px; background: #06b6d4;"></div>
+      <div style="color: #aaa; font-size: 10px; margin-top: 4px;">accent-cyan<br/>#06b6d4</div>
+    </div>
+    <div style="text-align: center;">
+      <div style="width: 64px; height: 64px; border-radius: 10px; background: #22d3ee;"></div>
+      <div style="color: #aaa; font-size: 10px; margin-top: 4px;">accent-light<br/>#22d3ee</div>
+    </div>
+  </div>
+
+  <div class="label" style="margin-bottom: 8px;">Semantic</div>
+  <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;">
+    <div style="text-align: center;">
+      <div style="width: 64px; height: 64px; border-radius: 10px; background: #ef4444;"></div>
+      <div style="color: #aaa; font-size: 10px; margin-top: 4px;">error/stop<br/>#ef4444</div>
+    </div>
+    <div style="text-align: center;">
+      <div style="width: 64px; height: 64px; border-radius: 10px; background: #10b981;"></div>
+      <div style="color: #aaa; font-size: 10px; margin-top: 4px;">success/live<br/>#10b981</div>
+    </div>
+    <div style="text-align: center;">
+      <div style="width: 64px; height: 64px; border-radius: 10px; background: #f59e0b;"></div>
+      <div style="color: #aaa; font-size: 10px; margin-top: 4px;">warning<br/>#f59e0b</div>
+    </div>
+  </div>
+
+  <div class="label" style="margin-bottom: 8px;">Text</div>
+  <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+    <div style="text-align: center;">
+      <div style="width: 64px; height: 64px; border-radius: 10px; background: #f8fafc; border: 1px solid #e2e8f0;"></div>
+      <div style="color: #aaa; font-size: 10px; margin-top: 4px;">text-primary<br/>#f8fafc</div>
+    </div>
+    <div style="text-align: center;">
+      <div style="width: 64px; height: 64px; border-radius: 10px; background: #cbd5e1;"></div>
+      <div style="color: #aaa; font-size: 10px; margin-top: 4px;">text-secondary<br/>#cbd5e1</div>
+    </div>
+    <div style="text-align: center;">
+      <div style="width: 64px; height: 64px; border-radius: 10px; background: #64748b;"></div>
+      <div style="color: #aaa; font-size: 10px; margin-top: 4px;">text-muted<br/>#64748b</div>
+    </div>
+    <div style="text-align: center;">
+      <div style="width: 64px; height: 64px; border-radius: 10px; background: #94a3b8;"></div>
+      <div style="color: #aaa; font-size: 10px; margin-top: 4px;">text-subtle<br/>#94a3b8</div>
+    </div>
+  </div>
+</div>
+
+<!-- TYPOGRAPHY -->
+<div class="section">
+  <h3>Typography Scale</h3>
+  <div style="background: #0f172a; border-radius: 12px; padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+    <div>
+      <div style="color: #64748b; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Display — Space Grotesk 700</div>
+      <div style="color: #f8fafc; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">VoxLingo</div>
+    </div>
+    <div>
+      <div style="color: #64748b; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Heading — Space Grotesk 600 · 20px</div>
+      <div style="color: #f8fafc; font-size: 20px; font-weight: 600;">Translation History</div>
+    </div>
+    <div>
+      <div style="color: #64748b; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Subheading — System Font 600 · 16px</div>
+      <div style="color: #f8fafc; font-size: 16px; font-weight: 600; font-family: system-ui;">English → Japanese</div>
+    </div>
+    <div>
+      <div style="color: #64748b; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Body — System Font 400 · 15px</div>
+      <div style="color: #cbd5e1; font-size: 15px; font-family: system-ui;">Where is the nearest train station?</div>
+    </div>
+    <div>
+      <div style="color: #64748b; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Translation — System Font 600 · 17px</div>
+      <div style="color: #f8fafc; font-size: 17px; font-weight: 600; font-family: system-ui;">一番近い駅はどこですか？</div>
+    </div>
+    <div>
+      <div style="color: #64748b; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Caption — System Font 400 · 12px</div>
+      <div style="color: #64748b; font-size: 12px; font-family: system-ui;">Tap and hold to speak</div>
+    </div>
+    <div>
+      <div style="color: #64748b; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Label — System Font 600 · 10px · Uppercase</div>
+      <div style="color: #94a3b8; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px; font-family: system-ui;">FROM LANGUAGE</div>
+    </div>
+  </div>
+</div>
+
+<!-- SPACING, RADII, SHADOWS -->
+<div class="section">
+  <h3>Spacing · Radii · Shadows</h3>
+  <div style="display: flex; gap: 24px; flex-wrap: wrap;">
+    <!-- Spacing -->
+    <div style="flex: 1; min-width: 200px;">
+      <div class="label" style="margin-bottom: 8px;">Spacing Scale (px)</div>
+      <div style="background: #0f172a; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 6px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="width: 4px; height: 12px; background: #3b82f6; border-radius: 2px;"></div>
+          <span style="color: #94a3b8; font-size: 11px; font-family: monospace;">xs: 4</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="width: 8px; height: 12px; background: #3b82f6; border-radius: 2px;"></div>
+          <span style="color: #94a3b8; font-size: 11px; font-family: monospace;">sm: 8</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="width: 12px; height: 12px; background: #3b82f6; border-radius: 2px;"></div>
+          <span style="color: #94a3b8; font-size: 11px; font-family: monospace;">md: 12</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="width: 16px; height: 12px; background: #3b82f6; border-radius: 2px;"></div>
+          <span style="color: #94a3b8; font-size: 11px; font-family: monospace;">lg: 16</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="width: 24px; height: 12px; background: #3b82f6; border-radius: 2px;"></div>
+          <span style="color: #94a3b8; font-size: 11px; font-family: monospace;">xl: 24</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="width: 32px; height: 12px; background: #3b82f6; border-radius: 2px;"></div>
+          <span style="color: #94a3b8; font-size: 11px; font-family: monospace;">2xl: 32</span>
+        </div>
+      </div>
+    </div>
+    <!-- Radii -->
+    <div style="flex: 1; min-width: 200px;">
+      <div class="label" style="margin-bottom: 8px;">Border Radii</div>
+      <div style="background: #0f172a; border-radius: 12px; padding: 16px; display: flex; flex-wrap: wrap; gap: 12px; align-items: end;">
+        <div style="text-align: center;">
+          <div style="width: 40px; height: 40px; border: 2px solid #3b82f6; border-radius: 6px;"></div>
+          <div style="color: #94a3b8; font-size: 10px; margin-top: 4px;">sm: 6</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="width: 40px; height: 40px; border: 2px solid #3b82f6; border-radius: 10px;"></div>
+          <div style="color: #94a3b8; font-size: 10px; margin-top: 4px;">md: 10</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="width: 40px; height: 40px; border: 2px solid #3b82f6; border-radius: 14px;"></div>
+          <div style="color: #94a3b8; font-size: 10px; margin-top: 4px;">lg: 14</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="width: 40px; height: 40px; border: 2px solid #3b82f6; border-radius: 20px;"></div>
+          <div style="color: #94a3b8; font-size: 10px; margin-top: 4px;">xl: 20</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="width: 40px; height: 40px; border: 2px solid #3b82f6; border-radius: 50%;"></div>
+          <div style="color: #94a3b8; font-size: 10px; margin-top: 4px;">full: 50%</div>
+        </div>
+      </div>
+    </div>
+    <!-- Shadows -->
+    <div style="flex: 1; min-width: 200px;">
+      <div class="label" style="margin-bottom: 8px;">Glow Shadows</div>
+      <div style="background: #0f172a; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 16px; align-items: center;">
+        <div style="text-align: center;">
+          <div style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6, #06b6d4); box-shadow: 0 0 20px rgba(59,130,246,0.3);"></div>
+          <div style="color: #94a3b8; font-size: 10px; margin-top: 6px;">glow-sm</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6, #06b6d4); box-shadow: 0 0 40px rgba(59,130,246,0.4);"></div>
+          <div style="color: #94a3b8; font-size: 10px; margin-top: 6px;">glow-md (mic idle)</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6, #06b6d4); box-shadow: 0 0 60px rgba(59,130,246,0.5), 0 0 120px rgba(6,182,212,0.2);"></div>
+          <div style="color: #94a3b8; font-size: 10px; margin-top: 6px;">glow-lg (mic active)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- COMPONENT PRIMITIVES -->
+<div class="section">
+  <h3>Component Primitives</h3>
+  <div style="background: #0f172a; border-radius: 12px; padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+    <!-- Buttons -->
+    <div class="label">Buttons</div>
+    <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+      <div style="background: linear-gradient(135deg, #3b82f6, #06b6d4); color: #fff; padding: 12px 24px; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer;">Primary Action</div>
+      <div style="background: #1e293b; color: #f8fafc; padding: 12px 24px; border-radius: 12px; font-size: 14px; font-weight: 500; border: 1px solid #334155; cursor: pointer;">Secondary</div>
+      <div style="background: rgba(239,68,68,0.15); color: #ef4444; padding: 12px 24px; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer;">Stop / Destructive</div>
+      <div style="color: #3b82f6; padding: 12px 24px; font-size: 14px; font-weight: 500; cursor: pointer;">Text Link</div>
+    </div>
+    <!-- Chips -->
+    <div class="label" style="margin-top: 8px;">Language Chips</div>
+    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+      <div style="background: #1e293b; color: #f8fafc; padding: 8px 14px; border-radius: 20px; font-size: 12px; font-weight: 500; border: 1px solid #334155;">English</div>
+      <div style="background: linear-gradient(135deg, #3b82f6, #06b6d4); color: #fff; padding: 8px 14px; border-radius: 20px; font-size: 12px; font-weight: 600;">Japanese</div>
+      <div style="background: #1e293b; color: #94a3b8; padding: 8px 14px; border-radius: 20px; font-size: 12px; font-weight: 500; border: 1px solid #334155;">Spanish</div>
+    </div>
+    <!-- Cards -->
+    <div class="label" style="margin-top: 8px;">Surface Cards</div>
+    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+      <div style="background: #1e293b; border-radius: 14px; padding: 16px; flex: 1; min-width: 180px; border: 1px solid #334155;">
+        <div style="color: #94a3b8; font-size: 10px; text-transform: uppercase; letter-spacing: 1px;">From</div>
+        <div style="color: #f8fafc; font-size: 14px; font-weight: 600; margin-top: 4px;">English</div>
+      </div>
+      <div style="background: #1e293b; border-radius: 14px; padding: 16px; flex: 1; min-width: 180px; border: 1px solid transparent; border-image: linear-gradient(135deg, #3b82f6, #06b6d4) 1; border-image-slice: 1; border-radius: 14px; overflow: hidden; position: relative;">
+        <div style="position: absolute; inset: 0; border-radius: 14px; border: 1px solid; border-image: linear-gradient(135deg, #3b82f6, #06b6d4) 1;"></div>
+        <div style="color: #06b6d4; font-size: 10px; text-transform: uppercase; letter-spacing: 1px;">To</div>
+        <div style="color: #f8fafc; font-size: 14px; font-weight: 600; margin-top: 4px;">Japanese</div>
+      </div>
+    </div>
+  </div>
+</div>

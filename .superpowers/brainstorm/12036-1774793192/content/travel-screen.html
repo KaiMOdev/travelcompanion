@@ -1,0 +1,230 @@
+<h2>Travel Screen — Full Design</h2>
+<p class="subtitle">Chat-first voice translation with bottom mic bar. Three states shown: idle, recording, and with conversation history.</p>
+
+<div style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center;">
+
+  <!-- STATE 1: Idle / Empty -->
+  <div style="width: 300px;">
+    <div class="label" style="margin-bottom: 8px; text-align: center;">Idle State</div>
+    <div style="height: 580px; background: #0f172a; border-radius: 24px; display: flex; flex-direction: column; font-family: system-ui, -apple-system, sans-serif; overflow: hidden; border: 1px solid #1e293b;">
+      <!-- Header -->
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 16px 12px;">
+        <div style="font-size: 20px; font-weight: 700; letter-spacing: -0.5px; background: linear-gradient(135deg, #3b82f6, #06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">VoxLingo</div>
+        <div style="width: 32px; height: 32px; border-radius: 10px; background: #1e293b; display: flex; align-items: center; justify-content: center; border: 1px solid #334155;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M16.36 16.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M16.36 7.64l1.42-1.42"/></svg>
+        </div>
+      </div>
+      <!-- Language bar -->
+      <div style="display: flex; align-items: center; gap: 8px; padding: 0 16px; margin-bottom: 16px;">
+        <div style="flex: 1; background: #1e293b; border-radius: 12px; padding: 10px 14px; text-align: center; border: 1px solid #334155;">
+          <div style="color: #64748b; font-size: 9px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600;">From</div>
+          <div style="color: #f8fafc; font-size: 14px; font-weight: 600; margin-top: 3px;">English</div>
+        </div>
+        <div style="width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6, #06b6d4); display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 0 20px rgba(59,130,246,0.2);">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M7 16l5-5-5-5M17 8l-5 5 5 5"/></svg>
+        </div>
+        <div style="flex: 1; background: #1e293b; border-radius: 12px; padding: 10px 14px; text-align: center; border: 1px solid #334155;">
+          <div style="color: #64748b; font-size: 9px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600;">To</div>
+          <div style="color: #06b6d4; font-size: 14px; font-weight: 600; margin-top: 3px;">Japanese</div>
+        </div>
+      </div>
+      <!-- Empty state -->
+      <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px;">
+        <div style="width: 64px; height: 64px; border-radius: 50%; background: #1e293b; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; border: 1px solid #334155;">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#334155" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <div style="color: #475569; font-size: 14px; font-weight: 500; text-align: center;">Start a conversation</div>
+        <div style="color: #334155; font-size: 12px; margin-top: 4px; text-align: center;">Tap the mic or type a phrase</div>
+      </div>
+      <!-- Bottom input bar -->
+      <div style="padding: 12px 16px 20px; background: #0f172a; border-top: 1px solid #1e293b;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="flex: 1; background: #1e293b; border-radius: 24px; padding: 12px 16px; color: #475569; font-size: 14px; border: 1px solid #334155;">Type a phrase...</div>
+          <div style="width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6, #06b6d4); display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 0 30px rgba(59,130,246,0.3);">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATE 2: Recording -->
+  <div style="width: 300px;">
+    <div class="label" style="margin-bottom: 8px; text-align: center;">Recording State</div>
+    <div style="height: 580px; background: #0f172a; border-radius: 24px; display: flex; flex-direction: column; font-family: system-ui, -apple-system, sans-serif; overflow: hidden; border: 1px solid #1e293b;">
+      <!-- Header -->
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 16px 12px;">
+        <div style="font-size: 20px; font-weight: 700; letter-spacing: -0.5px; background: linear-gradient(135deg, #3b82f6, #06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">VoxLingo</div>
+        <div style="width: 32px; height: 32px; border-radius: 10px; background: #1e293b; display: flex; align-items: center; justify-content: center; border: 1px solid #334155;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M16.36 16.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M16.36 7.64l1.42-1.42"/></svg>
+        </div>
+      </div>
+      <!-- Language bar -->
+      <div style="display: flex; align-items: center; gap: 8px; padding: 0 16px; margin-bottom: 16px;">
+        <div style="flex: 1; background: #1e293b; border-radius: 12px; padding: 10px 14px; text-align: center; border: 1px solid #334155;">
+          <div style="color: #64748b; font-size: 9px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600;">From</div>
+          <div style="color: #f8fafc; font-size: 14px; font-weight: 600; margin-top: 3px;">English</div>
+        </div>
+        <div style="width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6, #06b6d4); display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 0 20px rgba(59,130,246,0.2);">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M7 16l5-5-5-5M17 8l-5 5 5 5"/></svg>
+        </div>
+        <div style="flex: 1; background: #1e293b; border-radius: 12px; padding: 10px 14px; text-align: center; border: 1px solid #334155;">
+          <div style="color: #64748b; font-size: 9px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600;">To</div>
+          <div style="color: #06b6d4; font-size: 14px; font-weight: 600; margin-top: 3px;">Japanese</div>
+        </div>
+      </div>
+      <!-- Waveform / listening area -->
+      <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px;">
+        <!-- Animated waveform visualization -->
+        <div style="display: flex; align-items: center; gap: 4px; height: 80px; margin-bottom: 16px;">
+          <div style="width: 4px; height: 20px; background: #3b82f6; border-radius: 2px; opacity: 0.6;"></div>
+          <div style="width: 4px; height: 45px; background: #3b82f6; border-radius: 2px; opacity: 0.8;"></div>
+          <div style="width: 4px; height: 65px; background: linear-gradient(180deg, #3b82f6, #06b6d4); border-radius: 2px;"></div>
+          <div style="width: 4px; height: 40px; background: #06b6d4; border-radius: 2px; opacity: 0.8;"></div>
+          <div style="width: 4px; height: 55px; background: linear-gradient(180deg, #3b82f6, #06b6d4); border-radius: 2px;"></div>
+          <div style="width: 4px; height: 30px; background: #3b82f6; border-radius: 2px; opacity: 0.7;"></div>
+          <div style="width: 4px; height: 60px; background: linear-gradient(180deg, #06b6d4, #3b82f6); border-radius: 2px;"></div>
+          <div style="width: 4px; height: 25px; background: #06b6d4; border-radius: 2px; opacity: 0.6;"></div>
+          <div style="width: 4px; height: 50px; background: #3b82f6; border-radius: 2px; opacity: 0.9;"></div>
+          <div style="width: 4px; height: 35px; background: linear-gradient(180deg, #3b82f6, #06b6d4); border-radius: 2px;"></div>
+          <div style="width: 4px; height: 55px; background: #06b6d4; border-radius: 2px; opacity: 0.8;"></div>
+          <div style="width: 4px; height: 20px; background: #3b82f6; border-radius: 2px; opacity: 0.5;"></div>
+        </div>
+        <div style="color: #3b82f6; font-size: 14px; font-weight: 600;">Listening...</div>
+        <div style="color: #475569; font-size: 12px; margin-top: 4px;">Release to translate</div>
+      </div>
+      <!-- Bottom bar — recording state -->
+      <div style="padding: 12px 16px 20px; background: #0f172a; border-top: 1px solid #1e293b;">
+        <div style="display: flex; align-items: center; justify-content: center; gap: 16px;">
+          <!-- Cancel -->
+          <div style="color: #64748b; font-size: 13px; padding: 8px;">Cancel</div>
+          <!-- Stop button -->
+          <div style="width: 60px; height: 60px; border-radius: 50%; background: #ef4444; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 40px rgba(239,68,68,0.4);">
+            <div style="width: 20px; height: 20px; background: #fff; border-radius: 4px;"></div>
+          </div>
+          <!-- Spacer -->
+          <div style="width: 48px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATE 3: Conversation -->
+  <div style="width: 300px;">
+    <div class="label" style="margin-bottom: 8px; text-align: center;">Conversation State</div>
+    <div style="height: 580px; background: #0f172a; border-radius: 24px; display: flex; flex-direction: column; font-family: system-ui, -apple-system, sans-serif; overflow: hidden; border: 1px solid #1e293b;">
+      <!-- Header -->
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 16px 12px;">
+        <div style="font-size: 20px; font-weight: 700; letter-spacing: -0.5px; background: linear-gradient(135deg, #3b82f6, #06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">VoxLingo</div>
+        <div style="display: flex; gap: 8px;">
+          <div style="width: 32px; height: 32px; border-radius: 10px; background: #1e293b; display: flex; align-items: center; justify-content: center; border: 1px solid #334155;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+          </div>
+          <div style="width: 32px; height: 32px; border-radius: 10px; background: #1e293b; display: flex; align-items: center; justify-content: center; border: 1px solid #334155;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M16.36 16.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M16.36 7.64l1.42-1.42"/></svg>
+          </div>
+        </div>
+      </div>
+      <!-- Compact language bar -->
+      <div style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 16px 12px;">
+        <div style="background: #1e293b; border-radius: 20px; padding: 6px 14px; display: flex; align-items: center; gap: 8px; border: 1px solid #334155;">
+          <span style="color: #f8fafc; font-size: 12px; font-weight: 600;">EN</span>
+          <span style="color: #3b82f6; font-size: 10px;">→</span>
+          <span style="color: #06b6d4; font-size: 12px; font-weight: 600;">JA</span>
+        </div>
+      </div>
+      <!-- Chat bubbles -->
+      <div style="flex: 1; padding: 0 16px; display: flex; flex-direction: column; gap: 8px; overflow: hidden;">
+        <!-- Source bubble -->
+        <div style="align-self: flex-start; max-width: 80%;">
+          <div style="background: #1e293b; border-radius: 16px 16px 16px 4px; padding: 12px 14px; border: 1px solid #334155;">
+            <div style="color: #cbd5e1; font-size: 14px; line-height: 1.4;">Where is the nearest train station?</div>
+          </div>
+          <div style="color: #475569; font-size: 10px; margin-top: 3px; margin-left: 4px;">12:34 PM</div>
+        </div>
+        <!-- Translation bubble -->
+        <div style="align-self: flex-end; max-width: 80%;">
+          <div style="background: linear-gradient(135deg, #3b82f6, #06b6d4); border-radius: 16px 16px 4px 16px; padding: 12px 14px;">
+            <div style="color: #fff; font-size: 15px; font-weight: 500; line-height: 1.4;">一番近い駅はどこですか？</div>
+          </div>
+          <div style="color: #475569; font-size: 10px; margin-top: 3px; text-align: right; margin-right: 4px;">
+            <span style="color: #06b6d4;">♫</span> Tap to replay
+          </div>
+        </div>
+        <!-- Source bubble 2 -->
+        <div style="align-self: flex-start; max-width: 80%;">
+          <div style="background: #1e293b; border-radius: 16px 16px 16px 4px; padding: 12px 14px; border: 1px solid #334155;">
+            <div style="color: #cbd5e1; font-size: 14px; line-height: 1.4;">How much does this cost?</div>
+          </div>
+          <div style="color: #475569; font-size: 10px; margin-top: 3px; margin-left: 4px;">12:35 PM</div>
+        </div>
+        <!-- Translation bubble 2 -->
+        <div style="align-self: flex-end; max-width: 80%;">
+          <div style="background: linear-gradient(135deg, #3b82f6, #06b6d4); border-radius: 16px 16px 4px 16px; padding: 12px 14px;">
+            <div style="color: #fff; font-size: 15px; font-weight: 500; line-height: 1.4;">これはいくらですか？</div>
+          </div>
+          <div style="color: #475569; font-size: 10px; margin-top: 3px; text-align: right; margin-right: 4px;">
+            <span style="color: #06b6d4;">♫</span> Tap to replay
+          </div>
+        </div>
+        <!-- Source bubble 3 -->
+        <div style="align-self: flex-start; max-width: 80%;">
+          <div style="background: #1e293b; border-radius: 16px 16px 16px 4px; padding: 12px 14px; border: 1px solid #334155;">
+            <div style="color: #cbd5e1; font-size: 14px; line-height: 1.4;">Thank you very much!</div>
+          </div>
+          <div style="color: #475569; font-size: 10px; margin-top: 3px; margin-left: 4px;">12:36 PM</div>
+        </div>
+        <!-- Translation bubble 3 -->
+        <div style="align-self: flex-end; max-width: 80%;">
+          <div style="background: linear-gradient(135deg, #3b82f6, #06b6d4); border-radius: 16px 16px 4px 16px; padding: 12px 14px;">
+            <div style="color: #fff; font-size: 15px; font-weight: 500; line-height: 1.4;">どうもありがとうございます！</div>
+          </div>
+          <div style="color: #475569; font-size: 10px; margin-top: 3px; text-align: right; margin-right: 4px;">
+            <span style="color: #06b6d4;">♫</span> Tap to replay
+          </div>
+        </div>
+      </div>
+      <!-- Bottom input bar -->
+      <div style="padding: 12px 16px 20px; background: #0f172a; border-top: 1px solid #1e293b;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="flex: 1; background: #1e293b; border-radius: 24px; padding: 12px 16px; color: #475569; font-size: 14px; border: 1px solid #334155;">Type a phrase...</div>
+          <div style="width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6, #06b6d4); display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 0 30px rgba(59,130,246,0.3);">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Interaction notes -->
+<div class="section" style="margin-top: 24px;">
+  <h3>Interactions & Animations</h3>
+  <div style="background: #0f172a; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 12px; font-size: 13px; color: #cbd5e1; border: 1px solid #1e293b;">
+    <div style="display: flex; gap: 8px;">
+      <span style="color: #3b82f6; font-weight: 600; white-space: nowrap;">Mic button:</span>
+      <span>Idle = gentle glow pulse (2s ease). Press-and-hold starts recording. Glow intensifies + radiates outward. Transforms to red stop button.</span>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <span style="color: #3b82f6; font-weight: 600; white-space: nowrap;">Waveform:</span>
+      <span>12 bars with gradient fill, heights driven by audio amplitude. Bars animate with spring physics (damping: 0.6, stiffness: 200).</span>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <span style="color: #3b82f6; font-weight: 600; white-space: nowrap;">Chat bubbles:</span>
+      <span>Slide in from left (source) or right (translation) with spring animation. Fade + translateY(8px) → translateY(0). Duration: 300ms.</span>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <span style="color: #3b82f6; font-weight: 600; white-space: nowrap;">Language swap:</span>
+      <span>Rotate arrow icon 180° + cross-fade language labels. Spring physics on the swap button rotation.</span>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <span style="color: #3b82f6; font-weight: 600; white-space: nowrap;">Replay audio:</span>
+      <span>Tap translation bubble footer → brief ripple on bubble + audio playback. Cyan speaker icon pulses during playback.</span>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <span style="color: #3b82f6; font-weight: 600; white-space: nowrap;">Auto-scroll:</span>
+      <span>New bubbles trigger smooth scroll to bottom. ScrollView with inverted list pattern for optimal performance.</span>
+    </div>
+  </div>
+</div>
