@@ -1,0 +1,10 @@
+{
+  "eval_id": 0,
+  "run_type": "without_skill",
+  "expectations": [
+    {"text": "References the GeminiLiveSession class or geminiProxy.ts file", "passed": true, "evidence": "References 'geminiProxy.ts' and 'GeminiLiveSession' class"},
+    {"text": "Suggests a keep-alive/heartbeat mechanism with silent audio frames", "passed": true, "evidence": "Uses Buffer.alloc(1600) for silent buffer, sent every 20 seconds"},
+    {"text": "Provides concrete code implementation, not just explanation", "passed": true, "evidence": "Shows modified class with keepAliveTimer and startKeepAlive method, but less complete than with-skill version"},
+    {"text": "Uses correct audio format (PCM 16kHz) in any audio-related code", "passed": false, "evidence": "Buffer.alloc(1600) is only 0.05s of audio at 16kHz — suspiciously small. No explanation of the buffer size calculation. Does not explicitly mention PCM 16kHz format in the keepalive context"}
+  ]
+}

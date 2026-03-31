@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "run_type": "without_skill",
+  "expectations": [
+    { "text": "Identifies the Samsung first-load crash as a known issue", "passed": true, "evidence": "Section 4: 'Samsung's One UI has aggressive battery and memory optimization that can kill apps during initialization'" },
+    { "text": "Mentions the SDK 53+ splash screen crash on Android 11 and below", "passed": false, "evidence": "Not mentioned — only generic version mismatch advice given" },
+    { "text": "Suggests checking/updating the Expo Go version or downloading APK from expo.dev/go", "passed": false, "evidence": "Mentions updating from Play Store but does NOT mention expo.dev/go APK download as alternative" },
+    { "text": "Suggests using adb logcat to get crash logs for diagnosis", "passed": true, "evidence": "Section 5: 'adb logcat *:E | grep -i expo|react|fatal'" },
+    { "text": "Provides a structured troubleshooting sequence (not just a wall of possibilities)", "passed": true, "evidence": "5 numbered sections in priority order plus summary table" }
+  ]
+}

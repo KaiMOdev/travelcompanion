@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "eval_name": "firestore-delete",
+  "prompt": "I want to add a delete feature so users can remove saved words from their word list in Firestore",
+  "assertions": [
+    {"text": "Uses correct subcollection path: users/{uid}/wordlists/{docId}", "type": "must_contain"},
+    {"text": "Uses deleteDoc from firebase/firestore", "type": "must_contain"},
+    {"text": "Function style matches existing saveWordToList/getWordList patterns", "type": "must_contain"},
+    {"text": "Includes frontend usage example showing how to call the delete", "type": "must_contain"}
+  ]
+}

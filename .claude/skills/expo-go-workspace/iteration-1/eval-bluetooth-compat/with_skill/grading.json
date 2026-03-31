@@ -1,0 +1,11 @@
+{
+  "eval_id": 2,
+  "run_type": "with_skill",
+  "expectations": [
+    { "text": "Clearly states that Bluetooth (BLE) does NOT work in Expo Go", "passed": true, "evidence": "Opening: 'No, Bluetooth scanning will not work in Expo Go.'" },
+    { "text": "Explains why — native module not included in Expo Go's fixed module set", "passed": true, "evidence": "'Expo Go ships with a fixed set of native modules (the Expo SDK), and Bluetooth is not among them. This is a hard boundary.'" },
+    { "text": "Recommends switching to a development build (expo-dev-client)", "passed": true, "evidence": "'you need to create a development build using expo-dev-client'" },
+    { "text": "Provides specific steps to create a dev build (install expo-dev-client, eas build commands)", "passed": true, "evidence": "Full 5-step bash sequence with install, build, and start commands" },
+    { "text": "Names a specific BLE library (e.g., react-native-ble-plx)", "passed": true, "evidence": "Names both 'react-native-ble-plx' and 'react-native-ble-manager'" }
+  ]
+}

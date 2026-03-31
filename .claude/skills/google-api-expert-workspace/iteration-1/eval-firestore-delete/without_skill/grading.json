@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "run_type": "without_skill",
+  "expectations": [
+    {"text": "Uses correct subcollection path: users/{uid}/wordlists/{docId}", "passed": true, "evidence": "Uses doc(firestore, 'users', userId, 'wordlists', wordId)"},
+    {"text": "Uses deleteDoc from firebase/firestore", "passed": true, "evidence": "Imports deleteDoc and uses it correctly"},
+    {"text": "Function style matches existing saveWordToList/getWordList patterns", "passed": true, "evidence": "Uses getDb() singleton, same signature pattern"},
+    {"text": "Includes frontend usage example showing how to call the delete", "passed": false, "evidence": "Only a minimal 3-line usage snippet with no error handling, no UI integration, no confirmation dialog"}
+  ]
+}
