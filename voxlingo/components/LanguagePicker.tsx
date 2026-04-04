@@ -32,7 +32,7 @@ export function LanguagePicker({ selectedCode, onSelect, label }: Props) {
         <Text style={styles.chevron}>▼</Text>
       </TouchableOpacity>
 
-      <Modal visible={open} transparent animationType="fade">
+      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <TouchableOpacity
           style={styles.overlay}
           activeOpacity={1}

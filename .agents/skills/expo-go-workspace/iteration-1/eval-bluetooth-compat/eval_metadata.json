@@ -1,0 +1,27 @@
+{
+  "eval_id": 2,
+  "eval_name": "bluetooth-compat",
+  "prompt": "I want to add bluetooth support to scan nearby devices — will that work in Expo Go?",
+  "assertions": [
+    {
+      "text": "Clearly states that Bluetooth (BLE) does NOT work in Expo Go",
+      "type": "content_check"
+    },
+    {
+      "text": "Explains why — native module not included in Expo Go's fixed module set",
+      "type": "content_check"
+    },
+    {
+      "text": "Recommends switching to a development build (expo-dev-client)",
+      "type": "content_check"
+    },
+    {
+      "text": "Provides specific steps to create a dev build (install expo-dev-client, eas build commands)",
+      "type": "content_check"
+    },
+    {
+      "text": "Names a specific BLE library (e.g., react-native-ble-plx)",
+      "type": "content_check"
+    }
+  ]
+}

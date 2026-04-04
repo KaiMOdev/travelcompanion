@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "run_type": "without_skill",
+  "expectations": [
+    {"text": "Uses google-genai Python package (not deprecated google-generativeai)", "passed": false, "evidence": "Uses 'pip install google-generativeai' and 'import google.generativeai as genai' — this is the older deprecated package, not the current google-genai SDK"},
+    {"text": "Strips base64 data URI prefix before sending to API", "passed": true, "evidence": "re.sub(r'^data:image/\\w+;base64,', '', image_base64)"},
+    {"text": "Uses async def endpoints with proper FastAPI patterns", "passed": true, "evidence": "async def translate endpoint with Pydantic BaseModel"},
+    {"text": "Includes error handling with appropriate HTTP error responses", "passed": false, "evidence": "Only catches generic Exception -> 500. No input validation, no 400 for bad requests, no startup key validation"}
+  ]
+}

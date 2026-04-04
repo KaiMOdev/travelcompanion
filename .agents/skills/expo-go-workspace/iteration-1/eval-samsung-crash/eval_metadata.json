@@ -1,0 +1,27 @@
+{
+  "eval_id": 1,
+  "eval_name": "samsung-crash",
+  "prompt": "Expo Go keeps crashing on my Samsung Galaxy before the app even loads",
+  "assertions": [
+    {
+      "text": "Identifies the Samsung first-load crash as a known issue",
+      "type": "content_check"
+    },
+    {
+      "text": "Mentions the SDK 53+ splash screen crash on Android 11 and below",
+      "type": "content_check"
+    },
+    {
+      "text": "Suggests checking/updating the Expo Go version or downloading APK from expo.dev/go",
+      "type": "content_check"
+    },
+    {
+      "text": "Suggests using adb logcat to get crash logs for diagnosis",
+      "type": "content_check"
+    },
+    {
+      "text": "Provides a structured troubleshooting sequence (not just a wall of possibilities)",
+      "type": "content_check"
+    }
+  ]
+}

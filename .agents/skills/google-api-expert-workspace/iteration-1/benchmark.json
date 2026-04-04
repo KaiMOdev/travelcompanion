@@ -1,0 +1,32 @@
+{
+  "skill_name": "google-api-expert",
+  "iteration": 1,
+  "configurations": [
+    {
+      "name": "with_skill",
+      "evals": [
+        {"eval_name": "gemini-disconnect", "assertions_passed": 4, "assertions_total": 4, "pass_rate": 1.0},
+        {"eval_name": "firestore-delete", "assertions_passed": 4, "assertions_total": 4, "pass_rate": 1.0},
+        {"eval_name": "python-vision", "assertions_passed": 4, "assertions_total": 4, "pass_rate": 1.0}
+      ],
+      "overall_pass_rate": 1.0,
+      "total_passed": 12,
+      "total_assertions": 12
+    },
+    {
+      "name": "without_skill",
+      "evals": [
+        {"eval_name": "gemini-disconnect", "assertions_passed": 3, "assertions_total": 4, "pass_rate": 0.75},
+        {"eval_name": "firestore-delete", "assertions_passed": 3, "assertions_total": 4, "pass_rate": 0.75},
+        {"eval_name": "python-vision", "assertions_passed": 2, "assertions_total": 4, "pass_rate": 0.5}
+      ],
+      "overall_pass_rate": 0.667,
+      "total_passed": 8,
+      "total_assertions": 12
+    }
+  ],
+  "delta": {
+    "pass_rate_improvement": 0.333,
+    "assertions_gained": 4
+  }
+}

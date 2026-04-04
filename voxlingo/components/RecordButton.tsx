@@ -23,12 +23,12 @@ export function RecordButton({ isRecording, isTranslating, onPress }: Props) {
           Animated.timing(pulseAnim, {
             toValue: 1.15,
             duration: 600,
-            useNativeDriver: true,
+            useNativeDriver: false,
           }),
           Animated.timing(pulseAnim, {
             toValue: 1,
             duration: 600,
-            useNativeDriver: true,
+            useNativeDriver: false,
           }),
         ]),
       );

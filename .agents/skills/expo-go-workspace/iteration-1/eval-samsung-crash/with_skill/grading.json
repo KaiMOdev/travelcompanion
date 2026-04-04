@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "run_type": "with_skill",
+  "expectations": [
+    { "text": "Identifies the Samsung first-load crash as a known issue", "passed": true, "evidence": "Step 1 Android 12+ section: 'Samsung devices have aggressive memory management that can kill the Expo Go process during initialization on the very first launch'" },
+    { "text": "Mentions the SDK 53+ splash screen crash on Android 11 and below", "passed": true, "evidence": "Step 1 section: 'Expo Go SDK 53+ has a known crash on Android 11 and below — Binary XML inflating issue with splash screen views'" },
+    { "text": "Suggests checking/updating the Expo Go version or downloading APK from expo.dev/go", "passed": true, "evidence": "Multiple mentions: 'Download the latest patched Expo Go APK from https://expo.dev/go' and 'update Expo Go from the Play Store'" },
+    { "text": "Suggests using adb logcat to get crash logs for diagnosis", "passed": true, "evidence": "Step 5: 'adb logcat *:E | grep -i expo' and 'adb logcat -d > crash_log.txt'" },
+    { "text": "Provides a structured troubleshooting sequence (not just a wall of possibilities)", "passed": true, "evidence": "5-step sequential guide with numbered steps, plus a final checklist" }
+  ]
+}

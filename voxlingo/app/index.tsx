@@ -5,8 +5,8 @@ import {
   FlatList,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from '../hooks/useTranslation';
 import { LanguagePicker } from '../components/LanguagePicker';
 import { TranslationBubble } from '../components/TranslationBubble';
