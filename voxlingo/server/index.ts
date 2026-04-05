@@ -21,7 +21,7 @@ export function createApp() {
   const app = express();
 
   app.use(cors());
-  app.use(express.json({ limit: '10mb' }));
+  app.use(express.json({ limit: '25mb' }));
 
   const apiKey = process.env.GEMINI_API_KEY || '';
   const ai = new GoogleGenAI({ apiKey });
@@ -50,7 +50,7 @@ export function createApp() {
           {
             role: 'user',
             parts: [
-              { inlineData: { mimeType: 'audio/wav', data: audio } },
+              { inlineData: { mimeType: 'audio/mp4', data: audio } },
               { text: prompt },
             ],
           },
@@ -71,6 +71,60 @@ export function createApp() {
       });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Translation failed';
+      res.status(500).json({ error: message });
+    }
+  });
+
+  app.post('/vision', async (req: Request, res: Response) => {
+    const { image, targetLang } = req.body;
+
+    if (!image || !targetLang) {
+      res.status(400).json({ error: 'Missing required fields: image, targetLang' });
+      return;
+    }
+
+    if (!LANG_NAMES[targetLang]) {
+      res.status(400).json({ error: 'Invalid language code' });
+      return;
+    }
+
+    const targetName = LANG_NAMES[targetLang];
+    const prompt = `Detect all text in this image. Identify the language. Translate all detected text to ${targetName}. The translatedText MUST be in ${targetName}, not English. Return JSON only: { "detectedLanguage": "...", "originalText": "...", "translatedText": "..." }`;
+
+    try {
+      const result = await ai.models.generateContent({
+        model: GEMINI_MODEL,
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              { inlineData: { mimeType: 'image/jpeg', data: image } },
+              { text: prompt },
+            ],
+          },
+        ],
+      });
+
+      const text = result.text ?? '';
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        res.status(500).json({ error: 'Failed to parse Gemini response' });
+        return;
+      }
+
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (!parsed.detectedLanguage || !parsed.originalText || !parsed.translatedText) {
+        res.status(500).json({ error: 'Incomplete response from Gemini' });
+        return;
+      }
+
+      res.json({
+        detectedLanguage: parsed.detectedLanguage,
+        originalText: parsed.originalText,
+        translatedText: parsed.translatedText,
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Vision translation failed';
       res.status(500).json({ error: message });
     }
   });

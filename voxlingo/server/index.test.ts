@@ -69,3 +69,62 @@ describe('POST /translate', () => {
     expect(res.body).toHaveProperty('error');
   });
 });
+
+describe('POST /vision', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('returns vision translation from Gemini', async () => {
+    mockGenerateContent.mockResolvedValue({
+      text: '{"detectedLanguage": "Spanish", "originalText": "Hola", "translatedText": "Hello"}',
+    });
+
+    const app = createApp();
+    const res = await request(app)
+      .post('/vision')
+      .send({
+        image: 'base64img',
+        targetLang: 'en',
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      detectedLanguage: 'Spanish',
+      originalText: 'Hola',
+      translatedText: 'Hello',
+    });
+  });
+
+  it('returns 400 when required fields are missing', async () => {
+    const app = createApp();
+    const res = await request(app)
+      .post('/vision')
+      .send({ image: 'base64img' });
+
+    expect(res.status).toBe(400);
+    expect(res.body).toHaveProperty('error');
+  });
+
+  it('returns 400 for invalid language code', async () => {
+    const app = createApp();
+    const res = await request(app)
+      .post('/vision')
+      .send({ image: 'base64img', targetLang: 'xx' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Invalid language code');
+  });
+
+  it('returns 500 when Gemini call fails', async () => {
+    mockGenerateContent.mockRejectedValue(new Error('API error'));
+
+    const app = createApp();
+    const res = await request(app)
+      .post('/vision')
+      .send({ image: 'base64img', targetLang: 'en' });
+
+    expect(res.status).toBe(500);
+    expect(res.body).toHaveProperty('error');
+  });
+});
