@@ -32,9 +32,6 @@ const CHIP_CATEGORIES = EXPLORE_CATEGORIES.map((c) => ({
   label: `${c.emoji} ${c.label}`,
 }));
 
-const RADIUS_OPTIONS = [5, 10, 25, 0] as const;
-const RADIUS_LABELS: Record<number, string> = { 5: '5 km', 10: '10 km', 25: '25 km', 0: 'City-wide' };
-
 export default function ExploreScreen() {
   const router = useRouter();
   const { destination, setDestination, getLanguageCode, isLoaded } = useDestinationContext();
@@ -45,7 +42,6 @@ export default function ExploreScreen() {
   const [locationParams, setLocationParams] = useState<ExploreLocationParams | undefined>(undefined);
   const [locationLabel, setLocationLabel] = useState<string | null>(null);
   const [locatingGps, setLocatingGps] = useState(false);
-  const [selectedRadius, setSelectedRadius] = useState<number>(10);
   const [locationMismatch, setLocationMismatch] = useState<string | null>(null);
   const [cityQuery, setCityQuery] = useState('');
   const [allCities, setAllCities] = useState<string[]>([]);
@@ -87,31 +83,19 @@ export default function ExploreScreen() {
         // Check if user's GPS country matches selected destination
         if (loc.countryCode && destination && loc.countryCode.toUpperCase() !== destination.toUpperCase()) {
           const destName = getDestination(destination)?.countryName || destination;
-          setLocationMismatch(`You're not in ${destName}. Showing results for ${destName} near your location.`);
+          setLocationMismatch(`You're not in ${destName}. Showing results for ${destName} near ${city || 'your location'}.`);
         } else {
           setLocationMismatch(null);
         }
-        setLocationParams({
-          lat: loc.latitude,
-          lng: loc.longitude,
-          radius: selectedRadius || undefined,
-          city,
-        });
-        setLocationLabel(city || `${loc.latitude.toFixed(2)}, ${loc.longitude.toFixed(2)}`);
+        setLocationParams({ city });
+        setLocationLabel(city || 'Your area');
       }
     } catch (e) {
       console.warn('Location unavailable:', e);
     } finally {
       setLocatingGps(false);
     }
-  }, [selectedRadius]);
-
-  const handleRadiusChange = useCallback((r: number) => {
-    setSelectedRadius(r);
-    if (locationParams?.lat != null) {
-      setLocationParams((prev) => prev ? { ...prev, radius: r || undefined } : prev);
-    }
-  }, [locationParams]);
+  }, [destination]);
 
   const handleClearLocation = useCallback(() => {
     setLocationParams(undefined);
@@ -259,11 +243,13 @@ export default function ExploreScreen() {
           <View style={styles.cityInputWrapper}>
             <TextInput
               style={styles.cityInput}
-              placeholder="Search city..."
+              placeholder="Search city or town..."
               placeholderTextColor={colors.textMuted}
               value={cityQuery}
               onChangeText={(text) => { setCityQuery(text); setShowCitySuggestions(text.length > 0); }}
               onFocus={() => { if (cityQuery.length > 0) setShowCitySuggestions(true); }}
+              onSubmitEditing={() => { if (cityQuery.trim()) handleCitySelect(cityQuery.trim()); }}
+              returnKeyType="search"
             />
             {showCitySuggestions && citySuggestions.length > 0 && (
               <View style={styles.suggestionsDropdown}>
@@ -281,22 +267,6 @@ export default function ExploreScreen() {
             )}
           </View>
         </View>
-        {locationLabel && locationParams?.lat != null && (
-          <View style={styles.radiusRow}>
-            {RADIUS_OPTIONS.map((r) => (
-              <TouchableOpacity
-                key={r}
-                style={[styles.radiusChip, selectedRadius === r && styles.radiusChipActive]}
-                onPress={() => handleRadiusChange(r)}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.radiusText, selectedRadius === r && styles.radiusTextActive]}>
-                  {RADIUS_LABELS[r]}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
       </View>
 
       {locationMismatch && (
@@ -605,26 +575,5 @@ const styles = StyleSheet.create({
   },
   gpsLabelActive: {
     color: colors.primaryDark,
-  },
-  radiusRow: {
-    flexDirection: 'row',
-    marginTop: spacing.sm,
-    gap: spacing.xs,
-  },
-  radiusChip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.full,
-    backgroundColor: colors.surfaceAlt,
-  },
-  radiusChipActive: {
-    backgroundColor: colors.primary,
-  },
-  radiusText: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
-  radiusTextActive: {
-    color: colors.textOnPrimary,
   },
 });

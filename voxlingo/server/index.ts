@@ -1157,16 +1157,9 @@ PHRASES: 5 phrases for shopping/markets (asking price, bargaining, asking about 
       return;
     }
 
-    // Location-aware: optional lat, lng, radius (km), city
-    const lat = parseFloat(req.query.lat as string);
-    const lng = parseFloat(req.query.lng as string);
-    const radiusRaw = req.query.radius !== undefined ? parseInt(req.query.radius as string, 10) : 10;
-    const radius = isNaN(radiusRaw) ? 10 : radiusRaw;
+    // Location-aware: optional city name
     const city = (req.query.city as string) || '';
-    const hasLocation = !isNaN(lat) && !isNaN(lng);
-
-    // Cache key includes location context when provided
-    const locationKey = hasLocation ? `-${lat.toFixed(2)}_${lng.toFixed(2)}_${radius}km` : city ? `-${city}` : '';
+    const locationKey = city ? `-${city}` : '';
     const cacheKey = `explore-${code}-${category}${locationKey}`;
 
     // Check in-memory cache first
@@ -1183,19 +1176,12 @@ PHRASES: 5 phrases for shopping/markets (asking price, bargaining, asking about 
       return;
     }
 
-    let basePrompt = categoryDef.prompt(langName, `a ${langName}-speaking country (${code})`, code);
+    let prompt = categoryDef.prompt(langName, `a ${langName}-speaking country (${code})`, code);
 
-    // Inject location context into prompt
-    const radiusClause = radius > 0 ? ` Focus on places within ${radius}km of this location.` : '';
-    if (hasLocation && city) {
-      basePrompt = `The user is currently near ${city} (${lat.toFixed(4)}, ${lng.toFixed(4)}).${radiusClause}\n\n${basePrompt}`;
-    } else if (hasLocation) {
-      basePrompt = `The user is at coordinates (${lat.toFixed(4)}, ${lng.toFixed(4)}).${radiusClause}\n\n${basePrompt}`;
-    } else if (city) {
-      basePrompt = `The user wants to explore ${city}. ALL places MUST be located within ${city} or its immediate surrounding neighborhoods. For the "area" field, use the specific neighborhood or district within ${city}.\n\n${basePrompt}`;
+    // Inject city context into prompt
+    if (city) {
+      prompt = `The user wants to explore ${city}. ALL places MUST be located within ${city} or its immediate surrounding neighborhoods. For the "area" field, use the specific neighborhood or district within ${city}.\n\n${prompt}`;
     }
-
-    const prompt = basePrompt;
 
     try {
       // 45s timeout — explore prompts generate 20 places with phrases
