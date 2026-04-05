@@ -1,9 +1,34 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { startRecording, stopRecording } from '../services/audio';
 import { translateAudio, translateAudioStream } from '../services/translate';
 import { speak, stop } from '../services/speech';
 import { Translation } from '../types';
+
+const HISTORY_KEY = 'voxlingo_translation_history';
+const MAX_HISTORY = 100;
+
+async function loadHistory(): Promise<Translation[]> {
+  try {
+    const raw = await AsyncStorage.getItem(HISTORY_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+async function saveHistory(translations: Translation[]): Promise<void> {
+  try {
+    // Only save completed translations (not placeholders)
+    const completed = translations
+      .filter((t) => t.originalText && t.translatedText && !t.originalText.endsWith('...'))
+      .slice(-MAX_HISTORY);
+    await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(completed));
+  } catch {
+    // Non-critical
+  }
+}
 
 export function useTranslation() {
   const [isRecording, setIsRecording] = useState(false);
@@ -13,6 +38,13 @@ export function useTranslation() {
   const [speakingId, setSpeakingId] = useState<string | null>(null);
   const recordingRef = useRef(false);
   const recordStartTime = useRef(0);
+
+  // Load history on mount
+  useEffect(() => {
+    loadHistory().then((saved) => {
+      if (saved.length > 0) setTranslations(saved);
+    });
+  }, []);
 
   const speakTranslation = useCallback((text: string, langCode: string, id: string) => {
     void stop().then(() => {
@@ -120,9 +152,14 @@ export function useTranslation() {
           return;
         }
 
-        // Speak the final translation
+        // Speak the final translation and save history
         if (finalResult.translatedText) {
           speakTranslation(finalResult.translatedText, targetLang, id);
+          // Save to persistent history after state updates
+          setTranslations((prev) => {
+            saveHistory(prev);
+            return prev;
+          });
         }
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Translation failed';
@@ -147,7 +184,10 @@ export function useTranslation() {
   );
 
   const clearError = useCallback(() => setError(null), []);
-  const clearTranslations = useCallback(() => setTranslations([]), []);
+  const clearTranslations = useCallback(() => {
+    setTranslations([]);
+    saveHistory([]);
+  }, []);
 
   return {
     isRecording,
