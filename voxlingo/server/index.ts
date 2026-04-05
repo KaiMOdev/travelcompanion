@@ -962,127 +962,107 @@ Return JSON array ONLY: [{ "id": "1", "title": "1 — One", "body": "...", "spea
   });
 
   // --- Explore (AI Local Guide) ---
+
+  // Shared output schema for all explore prompts
+  function exploreOutputSchema(lang: string): string {
+    return `
+CRITICAL RULES:
+- Every place MUST be a real, specific, named establishment or location that physically exists (or existed recently).
+- Use the actual business name, not generic descriptions like "a ramen shop" or "local cafe".
+- "name" = the real name in English (or romanized). Example: "Ichiran Ramen Shibuya", NOT "A popular ramen chain".
+- "localName" = the real name in ${lang} native script only. Do NOT include romanization in this field.
+- "area" = specific neighborhood or district. Example: "Shibuya", "Trastevere", "Le Marais".
+- "description" = 1 sentence about what it is and where exactly it's located.
+- "whySpecial" = 1 sentence: why a local would recommend this over alternatives.
+- "vibeTags" = 2-4 mood/vibe tags lowercase.
+- "phrases" = 5 practical phrases for this type of place. Each phrase: {"english": "...", "local": "..."} where "local" is ONLY in ${lang} native script (no romanization, no parentheses).
+
+Return a JSON array ONLY, no markdown, no explanation:
+[{"name":"...","localName":"...","description":"...","whySpecial":"...","vibeTags":[...],"area":"...","phrases":[{"english":"...","local":"..."}]}]`;
+  }
+
   const EXPLORE_CATEGORIES: Record<string, { prompt: (lang: string, country: string, code: string) => string }> = {
     'street-food': {
-      prompt: (lang, country, code) => `Generate 20 street food and local food recommendations for travelers visiting ${country} (${code}).
-Focus on authentic, local-perspective spots — places locals actually eat, not tourist-heavy restaurants.
-Include food stalls, night markets, hole-in-the-wall eateries, and regional specialties.
+      prompt: (lang, country, code) => `You are a local food blogger who lives in ${country}. Recommend 20 specific street food spots, food stalls, hole-in-the-wall eateries, and night market vendors.
 
-For each place provide:
-- name: English name
-- localName: name in ${lang} native script
-- description: 1 sentence describing the place
-- whySpecial: 1 sentence about what makes it unique or worth visiting
-- vibeTags: 2-4 tags like "casual", "budget-friendly", "late-night", "family"
-- area: neighborhood or area name
-- phrases: 5-8 contextual phrases useful at this type of place, each with "english", "local" (in ${lang}), and "context" (when to use it)
-
-Return JSON array ONLY: [{ "name": "...", "localName": "...", "description": "...", "whySpecial": "...", "vibeTags": [...], "area": "...", "phrases": [{ "english": "...", "local": "...", "context": "..." }] }]`,
+Rules:
+- Name real places with their actual business names (e.g. "Fuunji Tsukemen" not "a tsukemen shop").
+- Prioritize places where locals eat, not tourist-oriented restaurants.
+- Mix: 30% famous local favorites, 50% neighborhood gems, 20% hidden finds.
+- Spread across different areas/neighborhoods — don't cluster in one district.
+- Include the specific dish or specialty each place is known for.
+${exploreOutputSchema(lang)}`,
     },
     'hidden-history': {
-      prompt: (lang, country, code) => `Generate 20 lesser-known historical and cultural site recommendations for travelers visiting ${country} (${code}).
-Focus on hidden gems — lesser-known temples, ruins, historical buildings, and monuments that most tourists miss.
+      prompt: (lang, country, code) => `You are a historian and local guide in ${country}. Recommend 20 specific lesser-known historical sites, ancient temples, forgotten ruins, heritage buildings, and culturally significant locations that most tourists walk right past.
 
-For each place provide:
-- name: English name
-- localName: name in ${lang} native script
-- description: 1 sentence describing the place
-- whySpecial: 1 sentence about what makes it unique
-- vibeTags: 2-4 tags like "quiet", "photogenic", "free", "ancient"
-- area: neighborhood or area name
-- phrases: 5-8 contextual phrases useful at this type of place, each with "english", "local" (in ${lang}), and "context"
-
-Return JSON array ONLY: [{ "name": "...", "localName": "...", "description": "...", "whySpecial": "...", "vibeTags": [...], "area": "...", "phrases": [{ "english": "...", "local": "...", "context": "..." }] }]`,
+Rules:
+- Name real sites with their actual names (e.g. "Nezu Shrine" not "an old shrine").
+- Skip the top-10 tourist sites everyone knows — focus on places ranked outside the top attractions.
+- Include founding year or historical period when known.
+- Mix: temples, shrines, old merchant districts, castle ruins, war memorials, heritage homes, ancient gardens.
+${exploreOutputSchema(lang)}`,
     },
     'chill-spots': {
-      prompt: (lang, country, code) => `Generate 20 relaxing and chill spot recommendations for travelers visiting ${country} (${code}).
-Focus on quiet cafes, parks, rooftop views, peaceful gardens, and places to unwind that locals love.
+      prompt: (lang, country, code) => `You are a local in ${country} who knows the best places to relax. Recommend 20 specific cafes, tea houses, parks, gardens, rooftop terraces, reading spots, and peaceful hideaways.
 
-For each place provide:
-- name: English name
-- localName: name in ${lang} native script
-- description: 1 sentence describing the place
-- whySpecial: 1 sentence about what makes it unique
-- vibeTags: 2-4 tags like "quiet", "scenic", "wifi", "cozy"
-- area: neighborhood or area name
-- phrases: 5-8 contextual phrases useful at this type of place, each with "english", "local" (in ${lang}), and "context"
-
-Return JSON array ONLY: [{ "name": "...", "localName": "...", "description": "...", "whySpecial": "...", "vibeTags": [...], "area": "...", "phrases": [{ "english": "...", "local": "...", "context": "..." }] }]`,
+Rules:
+- Name real establishments with actual business names (e.g. "Cafe de Flore" not "a Parisian cafe").
+- Focus on atmosphere: quiet, beautiful, contemplative places with character.
+- Include a mix: independent cafes, public gardens, scenic viewpoints, bookshop cafes, riverside spots.
+- Mention if they have wifi, outdoor seating, or notable views.
+${exploreOutputSchema(lang)}`,
     },
     'after-dark': {
-      prompt: (lang, country, code) => `Generate 20 nightlife and evening activity recommendations for travelers visiting ${country} (${code}).
-Focus on night markets, bars, live music venues, evening food stalls, and after-dark experiences locals enjoy.
+      prompt: (lang, country, code) => `You are a nightlife-savvy local in ${country}. Recommend 20 specific bars, izakayas, night markets, jazz clubs, rooftop bars, live music venues, and evening experiences.
 
-For each place provide:
-- name: English name
-- localName: name in ${lang} native script
-- description: 1 sentence describing the place
-- whySpecial: 1 sentence about what makes it unique
-- vibeTags: 2-4 tags like "lively", "romantic", "live-music", "late-night"
-- area: neighborhood or area name
-- phrases: 5-8 contextual phrases useful at this type of place, each with "english", "local" (in ${lang}), and "context"
-
-Return JSON array ONLY: [{ "name": "...", "localName": "...", "description": "...", "whySpecial": "...", "vibeTags": [...], "area": "...", "phrases": [{ "english": "...", "local": "...", "context": "..." }] }]`,
+Rules:
+- Name real venues with actual business names (e.g. "Golden Gai Bar Albatross" not "a small bar").
+- Mix: 30% cocktail/wine bars, 20% live music/jazz, 20% night markets/late-night food, 15% rooftop/views, 15% unique experiences (speakeasies, cultural performances).
+- Include approximate price range in the description (budget, moderate, upscale).
+- Spread across different neighborhoods.
+${exploreOutputSchema(lang)}`,
     },
     'hidden-gems': {
-      prompt: (lang, country, code) => `Generate 20 hidden gem recommendations for travelers visiting ${country} (${code}).
-Focus on places only locals know — secret viewpoints, unmarked restaurants, neighborhood favorites, unusual attractions off the beaten path.
+      prompt: (lang, country, code) => `You are a long-time resident of ${country} sharing your personal secret spots. Recommend 20 specific hidden gems — places that don't appear in typical guidebooks and that you'd only know about from living there.
 
-For each place provide:
-- name: English name
-- localName: name in ${lang} native script
-- description: 1 sentence describing the place
-- whySpecial: 1 sentence about what makes it unique
-- vibeTags: 2-4 tags like "secret", "local-favorite", "unique", "off-beat"
-- area: neighborhood or area name
-- phrases: 5-8 contextual phrases useful at this type of place, each with "english", "local" (in ${lang}), and "context"
-
-Return JSON array ONLY: [{ "name": "...", "localName": "...", "description": "...", "whySpecial": "...", "vibeTags": [...], "area": "...", "phrases": [{ "english": "...", "local": "...", "context": "..." }] }]`,
+Rules:
+- Name real places with actual names (e.g. "Yanaka Cemetery Cat Walk" not "a quiet neighborhood walk").
+- These should be genuinely surprising or unknown to most visitors: secret viewpoints, locals-only restaurants, unmarked entrances, seasonal-only spots, quirky museums.
+- Each place should have a story or detail that makes someone say "I never would have found this on my own."
+- NO places that appear on the first page of Google for "${country} travel".
+${exploreOutputSchema(lang)}`,
     },
     'creative-scene': {
-      prompt: (lang, country, code) => `Generate 20 creative and art scene recommendations for travelers visiting ${country} (${code}).
-Focus on galleries, street art neighborhoods, live music venues, independent theaters, artisan workshops, and creative spaces.
+      prompt: (lang, country, code) => `You are an artist and culture enthusiast living in ${country}. Recommend 20 specific galleries, street art locations, independent theaters, artisan workshops, music venues, creative markets, and cultural spaces.
 
-For each place provide:
-- name: English name
-- localName: name in ${lang} native script
-- description: 1 sentence describing the place
-- whySpecial: 1 sentence about what makes it unique
-- vibeTags: 2-4 tags like "artistic", "indie", "interactive", "free"
-- area: neighborhood or area name
-- phrases: 5-8 contextual phrases useful at this type of place, each with "english", "local" (in ${lang}), and "context"
-
-Return JSON array ONLY: [{ "name": "...", "localName": "...", "description": "...", "whySpecial": "...", "vibeTags": [...], "area": "...", "phrases": [{ "english": "...", "local": "...", "context": "..." }] }]`,
+Rules:
+- Name real venues with actual names (e.g. "teamLab Borderless" not "a digital art museum").
+- Focus on independent and local creative scenes, not major national museums everyone knows.
+- Include: street art neighborhoods (name the specific streets), artisan workshops you can visit, indie music venues, design districts, maker spaces, underground galleries.
+- Mention what kind of art/creativity each place features.
+${exploreOutputSchema(lang)}`,
     },
     'nature-escapes': {
-      prompt: (lang, country, code) => `Generate 20 nature and outdoor recommendations for travelers visiting ${country} (${code}).
-Focus on nearby nature spots, hiking trails, gardens, parks, beaches, and scenic areas accessible from major cities.
+      prompt: (lang, country, code) => `You are an outdoor enthusiast living in ${country}. Recommend 20 specific nature spots, hiking trails, gardens, beaches, scenic viewpoints, and natural areas.
 
-For each place provide:
-- name: English name
-- localName: name in ${lang} native script
-- description: 1 sentence describing the place
-- whySpecial: 1 sentence about what makes it unique
-- vibeTags: 2-4 tags like "scenic", "easy-hike", "sunrise", "swimming"
-- area: region or area name
-- phrases: 5-8 contextual phrases useful at this type of place, each with "english", "local" (in ${lang}), and "context"
-
-Return JSON array ONLY: [{ "name": "...", "localName": "...", "description": "...", "whySpecial": "...", "vibeTags": [...], "area": "...", "phrases": [{ "english": "...", "local": "...", "context": "..." }] }]`,
+Rules:
+- Name real places with actual trail/park/beach names (e.g. "Mount Takao Trail 1" not "a mountain hike").
+- Include practical details: approximate travel time from nearest city, difficulty level, best season.
+- Mix: 30% easy day trips, 30% moderate hikes, 20% beaches/water, 20% gardens/scenic viewpoints.
+- Focus on places reachable by public transport or short taxi from major cities.
+${exploreOutputSchema(lang)}`,
     },
     'local-markets': {
-      prompt: (lang, country, code) => `Generate 20 local market and shopping recommendations for travelers visiting ${country} (${code}).
-Focus on traditional markets, craft markets, flea markets, artisan shops, and places to buy authentic souvenirs and local goods.
+      prompt: (lang, country, code) => `You are a shopping-savvy local in ${country}. Recommend 20 specific markets, bazaars, craft shops, vintage stores, and places to buy authentic local goods and meaningful souvenirs.
 
-For each place provide:
-- name: English name
-- localName: name in ${lang} native script
-- description: 1 sentence describing the place
-- whySpecial: 1 sentence about what makes it unique
-- vibeTags: 2-4 tags like "bargaining", "crafts", "souvenirs", "weekend-only"
-- area: neighborhood or area name
-- phrases: 5-8 contextual phrases useful at this type of place, each with "english", "local" (in ${lang}), and "context"
-
-Return JSON array ONLY: [{ "name": "...", "localName": "...", "description": "...", "whySpecial": "...", "vibeTags": [...], "area": "...", "phrases": [{ "english": "...", "local": "...", "context": "..." }] }]`,
+Rules:
+- Name real markets with actual names (e.g. "Chatuchak Weekend Market" not "a big weekend market").
+- Include opening days/hours if they're limited (e.g. "weekends only", "morning only").
+- Mix: food markets, flea markets, craft/artisan markets, antique markets, specialty shops (ceramics, textiles, spices).
+- Focus on where locals actually shop, not tourist souvenir strips.
+- Mention what each place is best for buying.
+${exploreOutputSchema(lang)}`,
     },
   };
 
