@@ -1137,7 +1137,7 @@ Return JSON array ONLY: [{ "name": "...", "localName": "...", "description": "..
     } else if (hasLocation) {
       basePrompt = `The user is at coordinates (${lat.toFixed(4)}, ${lng.toFixed(4)}).${radiusClause}\n\n${basePrompt}`;
     } else if (city) {
-      basePrompt = `Focus on places in or near ${city}.\n\n${basePrompt}`;
+      basePrompt = `The user wants to explore ${city}. ALL places MUST be located within ${city}. For the "area" field, use the specific neighborhood or district within ${city}.\n\n${basePrompt}`;
     }
 
     const prompt = basePrompt;

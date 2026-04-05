@@ -252,9 +252,9 @@ export default function ExploreScreen() {
             <Text style={[styles.gpsLabel, locationLabel && styles.gpsLabelActive]}>
               {locationLabel || 'My location'}
             </Text>
-            {isLoading && locationLabel ? (
+            {isLoading && locationLabel && (
               <ActivityIndicator size="small" color={colors.primary} style={{ marginLeft: 6 }} />
-            ) : null}
+            )}
           </TouchableOpacity>
           <View style={styles.cityInputWrapper}>
             <TextInput
@@ -281,7 +281,7 @@ export default function ExploreScreen() {
             )}
           </View>
         </View>
-        {locationLabel && (
+        {locationLabel && locationParams?.lat != null && (
           <View style={styles.radiusRow}>
             {RADIUS_OPTIONS.map((r) => (
               <TouchableOpacity
