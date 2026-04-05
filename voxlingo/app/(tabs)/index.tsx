@@ -25,6 +25,7 @@ import { colors, spacing, radius, shadow } from '../../constants/theme';
 import { setSlowMode, getSlowMode, speak } from '../../services/speech';
 import { getEmergencyInfo } from '../../constants/emergency';
 import { getDestination } from '../../constants/destinations';
+import { getLanguageName } from '../../constants/languages';
 
 export default function TravelScreen() {
   const [sourceLang, setSourceLang] = useState('en');
@@ -61,12 +62,37 @@ export default function TravelScreen() {
     clearTranslations();
   };
 
+  // Track which side is recording in conversation mode
+  const conversationLangsRef = useRef<{ source: string; target: string } | null>(null);
+
   const handlePressIn = () => {
     startRecord();
   };
 
   const handlePressOut = () => {
     stopRecord(sourceLang, targetLang);
+  };
+
+  // Conversation mode: "I speak" button (my language → their language)
+  const handleMePressIn = () => {
+    conversationLangsRef.current = { source: sourceLang, target: targetLang };
+    startRecord();
+  };
+  const handleMePressOut = () => {
+    if (conversationLangsRef.current) {
+      stopRecord(conversationLangsRef.current.source, conversationLangsRef.current.target);
+    }
+  };
+
+  // Conversation mode: "They speak" button (their language → my language)
+  const handleThemPressIn = () => {
+    conversationLangsRef.current = { source: targetLang, target: sourceLang };
+    startRecord();
+  };
+  const handleThemPressOut = () => {
+    if (conversationLangsRef.current) {
+      stopRecord(conversationLangsRef.current.source, conversationLangsRef.current.target);
+    }
   };
 
   const toggleSlowSpeech = () => {
@@ -196,12 +222,37 @@ export default function TravelScreen() {
           </View>
         )}
 
-        <RecordButton
-          isRecording={isRecording}
-          isTranslating={isTranslating}
-          onPressIn={handlePressIn}
-          onPressOut={handlePressOut}
-        />
+        {destination ? (
+          <View style={styles.conversationBar}>
+            <TouchableOpacity
+              style={[styles.convoButton, styles.convoButtonMe]}
+              onPressIn={handleMePressIn}
+              onPressOut={handleMePressOut}
+              disabled={isTranslating}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.convoButtonIcon}>{isRecording && conversationLangsRef.current?.source === sourceLang ? '⏹️' : '🎙️'}</Text>
+              <Text style={styles.convoButtonLabel}>{getLanguageName(sourceLang)}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.convoButton, styles.convoButtonThem]}
+              onPressIn={handleThemPressIn}
+              onPressOut={handleThemPressOut}
+              disabled={isTranslating}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.convoButtonIcon}>{isRecording && conversationLangsRef.current?.source === targetLang ? '⏹️' : '🎙️'}</Text>
+              <Text style={styles.convoButtonLabel}>{getLanguageName(targetLang)}</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <RecordButton
+            isRecording={isRecording}
+            isTranslating={isTranslating}
+            onPressIn={handlePressIn}
+            onPressOut={handlePressOut}
+          />
+        )}
       </View>
 
       <ShowCard
@@ -408,5 +459,34 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
+  },
+  conversationBar: {
+    flexDirection: 'row',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    gap: spacing.md,
+  },
+  convoButton: {
+    flex: 1,
+    paddingVertical: spacing.lg,
+    borderRadius: radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+  },
+  convoButtonMe: {
+    backgroundColor: colors.primary,
+  },
+  convoButtonThem: {
+    backgroundColor: colors.headerBg,
+  },
+  convoButtonIcon: {
+    fontSize: 28,
+  },
+  convoButtonLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: 'white',
+    letterSpacing: 0.5,
   },
 });
