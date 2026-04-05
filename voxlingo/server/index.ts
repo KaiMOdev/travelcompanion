@@ -202,7 +202,9 @@ export function createApp() {
       const cacheKey = file.replace('.json', '');
       const cached = readCacheFile(cacheKey);
       if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-        if (cacheKey.startsWith('explore-')) {
+        if (cacheKey.startsWith('cities-')) {
+          // city cache loaded on-demand via cityCache map
+        } else if (cacheKey.startsWith('explore-')) {
           exploreCache.set(cacheKey, cached);
         } else if (cacheKey.endsWith('-phrases')) {
           phraseCache.set(cacheKey, cached);
@@ -898,6 +900,62 @@ Return JSON array ONLY: [{ "id": "1", "title": "1 — One", "body": "...", "spea
       res.json(enriched);
     } catch (err: unknown) {
       console.error('Culture content error:', err);
+      const { status, message } = classifyError(err);
+      res.status(status).json({ error: message });
+    }
+  });
+
+  // --- Cities (for Explore autocomplete) ---
+  const cityCache = new Map<string, { data: string[]; timestamp: number }>();
+
+  app.get('/destination/:code/cities', cacheLimiter, async (req: Request, res: Response) => {
+    const code = (req.params.code as string).toUpperCase();
+    const langName = COUNTRY_LANGS[code];
+
+    if (!langName) {
+      res.status(400).json({ error: 'Invalid country code' });
+      return;
+    }
+
+    const cacheKey = `cities-${code}`;
+    const memoryCached = cityCache.get(cacheKey);
+    if (memoryCached && Date.now() - memoryCached.timestamp < CACHE_TTL) {
+      res.json(memoryCached.data);
+      return;
+    }
+    const fileCached = readCacheFile(cacheKey);
+    if (fileCached && Date.now() - fileCached.timestamp < CACHE_TTL) {
+      cityCache.set(cacheKey, { data: fileCached.data as string[], timestamp: fileCached.timestamp });
+      res.json(fileCached.data);
+      return;
+    }
+
+    try {
+      const result = await callGemini({
+        model: GEMINI_MODEL,
+        contents: [{ role: 'user', parts: [{ text: `List 30 major cities and popular tourist destinations in the country with code ${code}. Include capital, major cities, and well-known tourist towns/areas. Return ONLY a JSON array of city name strings in English, sorted by popularity for travelers. Example: ["Tokyo", "Osaka", "Kyoto"]` }] }],
+      });
+
+      const text = result.text ?? '';
+      const jsonMatch = text.match(/\[[\s\S]*\]/);
+      if (!jsonMatch) {
+        res.status(500).json({ error: 'Failed to parse cities response' });
+        return;
+      }
+
+      const cities: string[] = JSON.parse(jsonMatch[0]).filter((c: unknown) => typeof c === 'string');
+
+      if (cities.length === 0) {
+        res.status(500).json({ error: 'No cities returned' });
+        return;
+      }
+
+      const cacheEntry = { data: cities, timestamp: Date.now() };
+      cityCache.set(cacheKey, cacheEntry);
+      writeCacheFile(cacheKey, cities);
+      res.json(cities);
+    } catch (err: unknown) {
+      console.error('Cities fetch error:', err);
       const { status, message } = classifyError(err);
       res.status(status).json({ error: message });
     }

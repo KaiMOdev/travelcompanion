@@ -1,6 +1,19 @@
 import { API_URL, apiHeaders } from './api';
 import { ExplorePlace } from '../types';
 
+export async function fetchCities(countryCode: string): Promise<string[]> {
+  const response = await fetch(
+    `${API_URL}/destination/${countryCode}/cities`,
+    { headers: apiHeaders() },
+  );
+  if (!response.ok) {
+    let message = 'Failed to fetch cities';
+    try { message = (await response.json()).error || message; } catch { /* non-JSON */ }
+    throw new Error(message);
+  }
+  return response.json();
+}
+
 export type ExploreLocationParams = {
   lat?: number;
   lng?: number;

@@ -1,10 +1,11 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
+  TextInput,
   Linking,
   Platform,
   StyleSheet,
@@ -24,6 +25,7 @@ import { colors, spacing, radius, typography } from '../../constants/theme';
 import { speak } from '../../services/speech';
 import { getDestination } from '../../constants/destinations';
 import { getCurrentLocation } from '../../services/location';
+import { fetchCities } from '../../services/explore';
 
 const CHIP_CATEGORIES = EXPLORE_CATEGORIES.map((c) => ({
   key: c.id,
@@ -45,7 +47,35 @@ export default function ExploreScreen() {
   const [locatingGps, setLocatingGps] = useState(false);
   const [selectedRadius, setSelectedRadius] = useState<number>(10);
   const [locationMismatch, setLocationMismatch] = useState<string | null>(null);
+  const [cityQuery, setCityQuery] = useState('');
+  const [allCities, setAllCities] = useState<string[]>([]);
+  const [showCitySuggestions, setShowCitySuggestions] = useState(false);
   const listRef = useRef<FlatList<ExplorePlace>>(null);
+
+  // Fetch cities for autocomplete when destination changes
+  useEffect(() => {
+    if (!destination) { setAllCities([]); return; }
+    let cancelled = false;
+    fetchCities(destination).then((cities) => {
+      if (!cancelled) setAllCities(cities);
+    }).catch(() => { /* non-critical */ });
+    return () => { cancelled = true; };
+  }, [destination]);
+
+  const citySuggestions = useMemo(() => {
+    if (!cityQuery.trim()) return [];
+    const q = cityQuery.toLowerCase();
+    return allCities.filter((c) => c.toLowerCase().includes(q)).slice(0, 5);
+  }, [cityQuery, allCities]);
+
+  const handleCitySelect = useCallback((city: string) => {
+    setCityQuery('');
+    setShowCitySuggestions(false);
+    setLocationMismatch(null);
+    setLocationParams({ city });
+    setLocationLabel(city);
+  }, []);
+
 
   const handleLocate = useCallback(async () => {
     setLocatingGps(true);
@@ -206,21 +236,47 @@ export default function ExploreScreen() {
       />
 
       <View style={styles.locationBar}>
-        <TouchableOpacity
-          style={[styles.gpsButton, locationLabel && styles.gpsButtonActive]}
-          onPress={locationLabel ? handleClearLocation : handleLocate}
-          disabled={locatingGps}
-          activeOpacity={0.7}
-        >
-          {locatingGps ? (
-            <ActivityIndicator size="small" color={colors.primary} />
-          ) : (
-            <Text style={styles.gpsIcon}>{locationLabel ? '✕' : '📍'}</Text>
-          )}
-          <Text style={[styles.gpsLabel, locationLabel && styles.gpsLabelActive]}>
-            {locationLabel || 'Use my location'}
-          </Text>
-        </TouchableOpacity>
+        <View style={styles.locationRow}>
+          <TouchableOpacity
+            style={[styles.gpsButton, locationLabel && styles.gpsButtonActive]}
+            onPress={locationLabel ? handleClearLocation : handleLocate}
+            disabled={locatingGps}
+            activeOpacity={0.7}
+          >
+            {locatingGps ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <Text style={styles.gpsIcon}>{locationLabel ? '✕' : '📍'}</Text>
+            )}
+            <Text style={[styles.gpsLabel, locationLabel && styles.gpsLabelActive]}>
+              {locationLabel || 'My location'}
+            </Text>
+          </TouchableOpacity>
+          <View style={styles.cityInputWrapper}>
+            <TextInput
+              style={styles.cityInput}
+              placeholder="Search city..."
+              placeholderTextColor={colors.textMuted}
+              value={cityQuery}
+              onChangeText={(text) => { setCityQuery(text); setShowCitySuggestions(text.length > 0); }}
+              onFocus={() => { if (cityQuery.length > 0) setShowCitySuggestions(true); }}
+            />
+            {showCitySuggestions && citySuggestions.length > 0 && (
+              <View style={styles.suggestionsDropdown}>
+                {citySuggestions.map((city) => (
+                  <TouchableOpacity
+                    key={city}
+                    style={styles.suggestionItem}
+                    onPress={() => handleCitySelect(city)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.suggestionText}>{city}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
+        </View>
         {locationLabel && (
           <View style={styles.radiusRow}>
             {RADIUS_OPTIONS.map((r) => (
@@ -479,6 +535,47 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     backgroundColor: colors.background,
+    zIndex: 10,
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  cityInputWrapper: {
+    flex: 1,
+    position: 'relative',
+  },
+  cityInput: {
+    ...typography.label,
+    color: colors.textPrimary,
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    height: 36,
+  },
+  suggestionsDropdown: {
+    position: 'absolute',
+    top: 40,
+    left: 0,
+    right: 0,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    zIndex: 100,
+    elevation: 10,
+  },
+  suggestionItem: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.divider,
+  },
+  suggestionText: {
+    ...typography.body,
+    color: colors.textPrimary,
   },
   gpsButton: {
     flexDirection: 'row',
