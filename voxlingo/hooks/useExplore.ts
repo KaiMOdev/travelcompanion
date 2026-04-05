@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fetchExplorePlaces } from '../services/explore';
-import { ExplorePlace } from '../types';
+import { ExplorePlace, ExploreCategoryId } from '../types';
 
 const PAGE_SIZE = 10;
 const CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -11,11 +11,11 @@ type CacheEntry = {
   data: ExplorePlace[];
 };
 
-function storageKey(destination: string, category: string): string {
+function storageKey(destination: string, category: ExploreCategoryId): string {
   return `explore:${destination}:${category}`;
 }
 
-export function useExplore(destination: string | null, category: string | null) {
+export function useExplore(destination: string | null, category: ExploreCategoryId | null) {
   const [allPlaces, setAllPlaces] = useState<ExplorePlace[]>([]);
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);

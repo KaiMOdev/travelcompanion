@@ -11,8 +11,14 @@ export async function fetchExplorePlaces(
     { signal, headers: apiHeaders() },
   );
   if (!response.ok) {
-    const err = await response.json();
-    throw new Error(err.error || 'Failed to fetch explore places');
+    let message = 'Failed to fetch explore places';
+    try {
+      const err = await response.json();
+      message = err.error || message;
+    } catch {
+      // Non-JSON error response — use default message
+    }
+    throw new Error(message);
   }
   return response.json();
 }
