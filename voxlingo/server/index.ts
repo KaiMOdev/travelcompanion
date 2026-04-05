@@ -42,7 +42,16 @@ export function createApp() {
 
     const sourceName = LANG_NAMES[sourceLang];
     const targetName = LANG_NAMES[targetLang];
-    const prompt = `Transcribe the following audio spoken in ${sourceName}. Then translate the transcription to ${targetName}. The translatedText MUST be in ${targetName}, not English. Return JSON only: { "originalText": "...", "translatedText": "..." }`;
+    const prompt = `You are a travel translator. Transcribe the following audio spoken in ${sourceName}. Then translate the transcription to ${targetName}.
+
+Rules:
+- The translatedText MUST be in ${targetName}, not English
+- Use natural, conversational ${targetName} (not overly formal or robotic)
+- Preserve the speaker's tone (casual, polite, urgent, etc.)
+- Handle slang, idioms, and colloquialisms naturally — translate the meaning, not word-for-word
+- If the audio is unclear, provide your best interpretation
+
+Return JSON only: { "originalText": "...", "translatedText": "..." }`;
 
     try {
       const result = await ai.models.generateContent({

@@ -12,8 +12,10 @@ import { LanguagePicker } from '../../components/LanguagePicker';
 import { TranslationBubble } from '../../components/TranslationBubble';
 import { RecordButton } from '../../components/RecordButton';
 import { ErrorBanner } from '../../components/ErrorBanner';
+import { ShowCard } from '../../components/ShowCard';
 import { Translation } from '../../types';
 import { colors, spacing, radius, shadow } from '../../constants/theme';
+import { setSlowMode, getSlowMode } from '../../services/speech';
 
 export default function TravelScreen() {
   const [sourceLang, setSourceLang] = useState('en');
@@ -21,6 +23,8 @@ export default function TravelScreen() {
   const { isRecording, isTranslating, translations, error, speakingId, toggleRecord, replay, clearError } =
     useTranslation();
   const flatListRef = useRef<FlatList>(null);
+  const [showCardItem, setShowCardItem] = useState<Translation | null>(null);
+  const [slowSpeech, setSlowSpeech] = useState(getSlowMode());
 
   const handleSwapLanguages = () => {
     setSourceLang(targetLang);
@@ -40,7 +44,16 @@ export default function TravelScreen() {
               <Text style={styles.headerTitle}>VoxLingo</Text>
               <Text style={styles.headerSub}>Voice Translation</Text>
             </View>
-            <Text style={styles.headerEmoji}>🌍</Text>
+            <TouchableOpacity
+              style={[styles.slowButton, slowSpeech && styles.slowButtonActive]}
+              onPress={() => {
+                const next = !slowSpeech;
+                setSlowSpeech(next);
+                setSlowMode(next);
+              }}
+            >
+              <Text style={styles.slowIcon}>{slowSpeech ? '🐢' : '🐇'}</Text>
+            </TouchableOpacity>
           </View>
         </SafeAreaView>
       </View>
@@ -81,6 +94,7 @@ export default function TravelScreen() {
               translation={item}
               isSpeaking={item.id === speakingId}
               onReplay={() => replay(item.id)}
+              onShowCard={() => setShowCardItem(item)}
             />
           )}
           ListEmptyComponent={
@@ -103,6 +117,11 @@ export default function TravelScreen() {
           onPress={handleRecord}
         />
       </View>
+
+      <ShowCard
+        translation={showCardItem}
+        onClose={() => setShowCardItem(null)}
+      />
     </View>
   );
 }
@@ -138,8 +157,19 @@ const styles = StyleSheet.create({
     marginTop: 2,
     letterSpacing: 0.5,
   },
-  headerEmoji: {
-    fontSize: 36,
+  slowButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  slowButtonActive: {
+    backgroundColor: colors.secondary,
+  },
+  slowIcon: {
+    fontSize: 24,
   },
   body: {
     flex: 1,

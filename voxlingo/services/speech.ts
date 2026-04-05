@@ -10,6 +10,16 @@ export function toBcp47(langCode: string): string {
   return LANG_MAP[langCode] || langCode;
 }
 
+let slowMode = false;
+
+export function setSlowMode(slow: boolean): void {
+  slowMode = slow;
+}
+
+export function getSlowMode(): boolean {
+  return slowMode;
+}
+
 type SpeakOptions = {
   onDone?: () => void;
 };
@@ -18,9 +28,9 @@ export function speak(text: string, langCode: string, options?: SpeakOptions): v
   try {
     Speech.speak(text, {
       language: toBcp47(langCode),
+      rate: slowMode ? 0.6 : 1.0,
       onDone: options?.onDone,
       onError: () => {
-        // Silently fail — translation text is still visible
         options?.onDone?.();
       },
     });

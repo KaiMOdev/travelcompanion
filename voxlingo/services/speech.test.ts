@@ -17,6 +17,7 @@ describe('speech service', () => {
 
     expect(Speech.speak).toHaveBeenCalledWith('hola', {
       language: 'es',
+      rate: expect.any(Number),
       onDone: expect.any(Function),
       onError: expect.any(Function),
     });
@@ -27,6 +28,7 @@ describe('speech service', () => {
 
     expect(Speech.speak).toHaveBeenCalledWith('你好', {
       language: 'zh-CN',
+      rate: expect.any(Number),
       onDone: expect.any(Function),
       onError: expect.any(Function),
     });
@@ -37,6 +39,7 @@ describe('speech service', () => {
 
     expect(Speech.speak).toHaveBeenCalledWith('kumusta', {
       language: 'fil',
+      rate: expect.any(Number),
       onDone: expect.any(Function),
       onError: expect.any(Function),
     });

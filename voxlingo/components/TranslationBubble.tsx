@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Clipboard } from 'react-native';
 import { Translation } from '../types';
 import { getLanguageName } from '../constants/languages';
 import { colors, shadow, spacing, radius } from '../constants/theme';
@@ -8,23 +8,29 @@ type Props = {
   translation: Translation;
   isSpeaking: boolean;
   onReplay: () => void;
+  onShowCard?: () => void;
 };
 
-export function TranslationBubble({ translation, isSpeaking, onReplay }: Props) {
+export function TranslationBubble({ translation, isSpeaking, onReplay, onShowCard }: Props) {
   return (
     <View style={styles.container}>
       <View style={styles.sourceRow}>
-        <View style={[styles.bubble, styles.sourceBubble]}>
+        <TouchableOpacity
+          style={[styles.bubble, styles.sourceBubble]}
+          onLongPress={() => Clipboard.setString(translation.originalText)}
+          activeOpacity={0.8}
+        >
           <Text style={styles.langBadge}>
             {getLanguageName(translation.sourceLang)}
           </Text>
           <Text style={styles.sourceText}>{translation.originalText}</Text>
-        </View>
+        </TouchableOpacity>
       </View>
       <View style={styles.targetRow}>
         <TouchableOpacity
           style={[styles.bubble, styles.targetBubble]}
           onPress={onReplay}
+          onLongPress={onShowCard}
           activeOpacity={0.7}
         >
           <View style={styles.targetHeader}>

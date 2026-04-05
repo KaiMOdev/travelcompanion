@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as ImagePicker from 'expo-image-picker';
 import { LanguagePicker } from '../../components/LanguagePicker';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import { translateImage } from '../../services/vision';
@@ -25,6 +26,7 @@ export default function CameraScreen() {
   const [result, setResult] = useState<VisionResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cameraReady, setCameraReady] = useState(false);
+  const [flash, setFlash] = useState(false);
   const cameraRef = useRef<CameraView | null>(null);
   const captureId = useRef(0);
 
@@ -101,6 +103,38 @@ export default function CameraScreen() {
     }
   };
 
+  const handleGallery = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        base64: true,
+        quality: 0.7,
+      });
+      if (result.canceled || !result.assets[0]?.base64) return;
+
+      const asset = result.assets[0];
+      captureId.current += 1;
+      const thisCapture = captureId.current;
+      setPhoto(asset.uri);
+      setResult(null);
+      setError(null);
+      setIsTranslating(true);
+
+      try {
+        const visionResult = await translateImage(asset.base64, targetLang);
+        if (captureId.current !== thisCapture) return;
+        setResult(visionResult);
+      } catch (err: unknown) {
+        if (captureId.current !== thisCapture) return;
+        setError(err instanceof Error ? err.message : 'Translation failed');
+      } finally {
+        if (captureId.current === thisCapture) setIsTranslating(false);
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to pick image');
+    }
+  };
+
   const handleReset = () => {
     captureId.current += 1;
     setPhoto(null);
@@ -163,9 +197,15 @@ export default function CameraScreen() {
         </View>
       </SafeAreaView>
 
-      <CameraView ref={cameraRef} style={styles.camera} facing="back" onCameraReady={() => setCameraReady(true)} />
+      <CameraView ref={cameraRef} style={styles.camera} facing="back" flash={flash ? 'on' : 'off'} onCameraReady={() => setCameraReady(true)} />
 
       <View style={styles.shutterBar}>
+        <TouchableOpacity
+          style={styles.flashButton}
+          onPress={() => setFlash(!flash)}
+        >
+          <Text style={styles.flashIcon}>{flash ? '⚡' : '🔦'}</Text>
+        </TouchableOpacity>
         <TouchableOpacity
           style={[styles.shutterOuter, !cameraReady && styles.shutterDisabled]}
           onPress={handleCapture}
@@ -175,6 +215,12 @@ export default function CameraScreen() {
           <View style={styles.shutterInner}>
             <Text style={styles.shutterIcon}>📸</Text>
           </View>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.flashButton}
+          onPress={handleGallery}
+        >
+          <Text style={styles.flashIcon}>🖼️</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -257,7 +303,20 @@ const styles = StyleSheet.create({
   shutterBar: {
     backgroundColor: colors.shutterBg,
     paddingVertical: spacing.xl,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
     alignItems: 'center',
+  },
+  flashButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  flashIcon: {
+    fontSize: 20,
   },
   shutterOuter: {
     width: 80,
