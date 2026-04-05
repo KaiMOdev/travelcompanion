@@ -473,6 +473,174 @@ Return JSON array only: [{ "id": "1", "category": "...", "title": "...", "body":
     }
   });
 
+  // --- Culture content endpoint ---
+
+  const CULTURE_CATEGORIES: Record<string, { count: number; prompt: (lang: string, country: string) => string }> = {
+    'dos-donts': {
+      count: 8,
+      prompt: (lang, country) => `Generate 8 do's and don'ts for tourists visiting ${country} (${lang}-speaking).
+
+For each item, provide:
+- id: unique string (e.g. "1", "2")
+- category: "dos-donts"
+- title: starts with "Do:" or "Don't:" (3-8 words)
+- body: 1-2 sentences explaining why
+- countryCode: will be set server-side
+- speakable: null
+
+Focus on practical, non-obvious advice. Avoid stereotypes.
+
+Return JSON array ONLY: [{ "id": "1", "title": "...", "body": "...", "speakable": null, "romanized": null }]`,
+    },
+    'gestures': {
+      count: 6,
+      prompt: (lang, country) => `Generate 6 body language and gesture tips for tourists visiting ${country} (${lang}-speaking).
+
+Cover: greetings (handshake/bow/etc), hand signals, eye contact, personal space, pointing, beckoning.
+
+For each item:
+- id: unique string
+- category: "gestures"
+- title: 3-6 words
+- body: 1-2 sentences explaining the gesture and when to use/avoid it
+- speakable: null
+- romanized: null
+
+Return JSON array ONLY: [{ "id": "1", "title": "...", "body": "...", "speakable": null, "romanized": null }]`,
+    },
+    'food': {
+      count: 8,
+      prompt: (lang, country) => `Generate 8 food guide entries for tourists visiting ${country} (${lang}-speaking).
+
+Include: 5 must-try dishes, 2 eating etiquette tips, 1 dietary vocabulary entry.
+
+For each item:
+- id: unique string
+- category: "food"
+- title: dish name or tip title (3-8 words)
+- body: 1-2 sentences describing the dish or explaining the etiquette
+- speakable: the dish/phrase name in ${lang} native script (null for etiquette tips)
+- romanized: pronunciation in Latin characters (null if ${lang} uses Latin script, null for etiquette tips)
+
+Return JSON array ONLY: [{ "id": "1", "title": "...", "body": "...", "speakable": "...", "romanized": "..." }]`,
+    },
+    'tipping': {
+      count: 5,
+      prompt: (lang, country) => `Generate 5 tipping and payment custom entries for tourists visiting ${country}.
+
+Cover: restaurants, taxis, hotels/porters, cash vs card norms, service charges or tax.
+
+For each item:
+- id: unique string
+- category: "tipping"
+- title: 3-6 words
+- body: 1-2 sentences with specific amounts/percentages when relevant
+- speakable: null
+- romanized: null
+
+Return JSON array ONLY: [{ "id": "1", "title": "...", "body": "...", "speakable": null, "romanized": null }]`,
+    },
+    'sacred-sites': {
+      count: 5,
+      prompt: (lang, country) => `Generate 5 religious and sacred site etiquette entries for tourists visiting ${country}.
+
+Cover: dress code, shoes on/off rules, photography rules, expected behavior, offerings or donations.
+
+For each item:
+- id: unique string
+- category: "sacred-sites"
+- title: 3-6 words
+- body: 1-2 sentences of actionable advice
+- speakable: null
+- romanized: null
+
+Return JSON array ONLY: [{ "id": "1", "title": "...", "body": "...", "speakable": null, "romanized": null }]`,
+    },
+    'numbers': {
+      count: 10,
+      prompt: (lang, country) => `Generate entries for numbers 1 through 10 in ${lang} as spoken in ${country}.
+
+For each number:
+- id: the number as string ("1", "2", etc.)
+- category: "numbers"
+- title: "1 — One", "2 — Two", etc. (number + English word)
+- body: brief usage note (e.g., "Used when counting items at a market")
+- speakable: the number word in ${lang} native script
+- romanized: pronunciation in Latin characters (null if ${lang} uses Latin script)
+
+Return JSON array ONLY: [{ "id": "1", "title": "1 — One", "body": "...", "speakable": "...", "romanized": "..." }]`,
+    },
+  };
+
+  const cultureCache = new Map<string, { data: unknown[]; timestamp: number }>();
+
+  app.get('/destination/:code/culture/:category', async (req: Request, res: Response) => {
+    const code = req.params.code.toUpperCase();
+    const category = req.params.category;
+    const langName = COUNTRY_LANGS[code];
+
+    if (!langName) {
+      res.status(400).json({ error: 'Invalid country code' });
+      return;
+    }
+
+    const categoryDef = CULTURE_CATEGORIES[category];
+    if (!categoryDef) {
+      res.status(400).json({ error: 'Invalid category' });
+      return;
+    }
+
+    const cacheKey = `${code}:${category}`;
+    const cached = cultureCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      res.json(cached.data);
+      return;
+    }
+
+    const prompt = categoryDef.prompt(langName, `a ${langName}-speaking country (${code})`);
+
+    try {
+      const result = await ai.models.generateContent({
+        model: GEMINI_MODEL,
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      });
+
+      const text = result.text ?? '';
+      const jsonMatch = text.match(/\[[\s\S]*\]/);
+      if (!jsonMatch) {
+        res.status(500).json({ error: 'Failed to parse culture response' });
+        return;
+      }
+
+      const entries = JSON.parse(jsonMatch[0]);
+
+      // Validate entries have required fields
+      const valid = entries.filter(
+        (e: Record<string, unknown>) =>
+          typeof e.id === 'string' && typeof e.title === 'string' && typeof e.body === 'string'
+      );
+
+      if (valid.length === 0) {
+        res.status(500).json({ error: 'No valid entries in Gemini response' });
+        return;
+      }
+
+      // Set countryCode, category, and unique IDs on each entry
+      const enriched = valid.map((e: Record<string, unknown>, i: number) => ({
+        ...e,
+        id: `${code}-${category}-${i + 1}`,
+        countryCode: code,
+        category,
+      }));
+
+      cultureCache.set(cacheKey, { data: enriched, timestamp: Date.now() });
+      res.json(enriched);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to generate culture content';
+      res.status(500).json({ error: message });
+    }
+  });
+
   return app;
 }
 
