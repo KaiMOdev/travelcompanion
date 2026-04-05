@@ -57,8 +57,8 @@ export function useExplore(destination: string | null, category: ExploreCategory
             return;
           }
         }
-      } catch {
-        // AsyncStorage read failed — fall through to fetch
+      } catch (e) {
+        console.warn('AsyncStorage read failed for explore cache:', e);
       }
 
       // 3. Fetch from server
@@ -75,8 +75,8 @@ export function useExplore(destination: string | null, category: ExploreCategory
           try {
             const entry: CacheEntry = { timestamp: Date.now(), data };
             await AsyncStorage.setItem(storageKey(destination, category), JSON.stringify(entry));
-          } catch {
-            // Non-critical
+          } catch (e) {
+            console.warn('AsyncStorage write failed for explore cache:', e);
           }
         }
       } catch (err) {

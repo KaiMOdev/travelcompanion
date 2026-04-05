@@ -1,20 +1,26 @@
-import { API_URL } from './api';
+import { API_URL, apiHeaders } from './api';
 import { Phrase, CulturalTip, CultureEntry, CultureCategory } from '../types';
 
 export async function fetchPhrases(countryCode: string): Promise<Phrase[]> {
-  const response = await fetch(`${API_URL}/destination/${countryCode}/phrases`);
+  const response = await fetch(`${API_URL}/destination/${countryCode}/phrases`, {
+    headers: apiHeaders(),
+  });
   if (!response.ok) {
-    const err = await response.json();
-    throw new Error(err.error || 'Failed to fetch phrases');
+    let message = 'Failed to fetch phrases';
+    try { message = (await response.json()).error || message; } catch { /* non-JSON response */ }
+    throw new Error(message);
   }
   return response.json();
 }
 
 export async function fetchTips(countryCode: string): Promise<CulturalTip[]> {
-  const response = await fetch(`${API_URL}/destination/${countryCode}/tips`);
+  const response = await fetch(`${API_URL}/destination/${countryCode}/tips`, {
+    headers: apiHeaders(),
+  });
   if (!response.ok) {
-    const err = await response.json();
-    throw new Error(err.error || 'Failed to fetch tips');
+    let message = 'Failed to fetch tips';
+    try { message = (await response.json()).error || message; } catch { /* non-JSON response */ }
+    throw new Error(message);
   }
   return response.json();
 }
@@ -26,11 +32,12 @@ export async function fetchCultureCategory(
 ): Promise<CultureEntry[]> {
   const response = await fetch(
     `${API_URL}/destination/${countryCode}/culture/${category}`,
-    { signal },
+    { signal, headers: apiHeaders() },
   );
   if (!response.ok) {
-    const err = await response.json();
-    throw new Error(err.error || 'Failed to fetch culture content');
+    let message = 'Failed to fetch culture content';
+    try { message = (await response.json()).error || message; } catch { /* non-JSON response */ }
+    throw new Error(message);
   }
   return response.json();
 }

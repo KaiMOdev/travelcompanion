@@ -58,7 +58,7 @@ export function createApp() {
           if (!origin || allowedOrigins.includes(origin)) callback(null, true);
           else callback(null, false);
         }
-      : true, // allow all in dev when ALLOWED_ORIGINS is not set
+      : (() => { console.warn('⚠ CORS: allowing all origins (ALLOWED_ORIGINS not set)'); return true; })(),
   }));
 
   app.use(express.json({ limit: '10mb' }));
@@ -79,7 +79,8 @@ export function createApp() {
     message: { error: 'Too many requests, please try again later' },
   });
 
-  // Health check (before auth so load balancers can reach it)
+  // Health check — intentionally before auth so load balancers can reach it.
+  // Only returns status; never expose secrets or internal state here.
   app.get('/health', (_req: Request, res: Response) => {
     res.json({ status: 'ok' });
   });
@@ -99,8 +100,8 @@ export function createApp() {
 
   const apiKeyAuth = (req: Request, res: Response, next: NextFunction): void => {
     if (!serverApiKey) { next(); return; } // skip auth if not configured (dev mode)
-    const clientKey = req.headers['x-api-key'] as string;
-    if (!clientKey || !safeEqual(clientKey, serverApiKey)) {
+    const clientKey = req.headers['x-api-key'];
+    if (typeof clientKey !== 'string' || !safeEqual(clientKey, serverApiKey)) {
       res.status(401).json({ error: 'Unauthorized' });
       return;
     }

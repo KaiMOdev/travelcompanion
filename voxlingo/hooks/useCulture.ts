@@ -57,8 +57,8 @@ export function useCulture(destination: string | null, category: CultureCategory
             return;
           }
         }
-      } catch {
-        // AsyncStorage read failed — fall through to fetch
+      } catch (e) {
+        console.warn('AsyncStorage read failed for culture cache:', e);
       }
 
       // 3. Fetch from server
@@ -75,8 +75,8 @@ export function useCulture(destination: string | null, category: CultureCategory
           try {
             const entry: CacheEntry = { timestamp: Date.now(), data };
             await AsyncStorage.setItem(storageKey(destination, category), JSON.stringify(entry));
-          } catch {
-            // Non-critical
+          } catch (e) {
+            console.warn('AsyncStorage write failed for culture cache:', e);
           }
         }
       } catch (err) {

@@ -1,5 +1,5 @@
-import { VisionResponse, SmartVisionResponse, TranslateErrorResponse } from '../types';
-import { API_URL } from './api';
+import { VisionResponse, SmartVisionResponse } from '../types';
+import { API_URL, apiHeaders } from './api';
 
 export async function translateImage(
   image: string,
@@ -10,7 +10,7 @@ export async function translateImage(
   try {
     response = await fetch(`${API_URL}/vision`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: apiHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ image, targetLang }),
     });
   } catch {
@@ -18,8 +18,9 @@ export async function translateImage(
   }
 
   if (!response.ok) {
-    const body: TranslateErrorResponse = await response.json();
-    throw new Error(body.error || 'Image translation failed');
+    let message = 'Image translation failed';
+    try { message = (await response.json()).error || message; } catch { /* non-JSON response */ }
+    throw new Error(message);
   }
 
   return response.json();
@@ -35,7 +36,7 @@ export async function translateImageSmart(
   try {
     response = await fetch(`${API_URL}/vision`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: apiHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ image, targetLang, dietaryPreferences }),
     });
   } catch {
@@ -43,8 +44,9 @@ export async function translateImageSmart(
   }
 
   if (!response.ok) {
-    const body: TranslateErrorResponse = await response.json();
-    throw new Error(body.error || 'Smart vision translation failed');
+    let message = 'Smart vision translation failed';
+    try { message = (await response.json()).error || message; } catch { /* non-JSON response */ }
+    throw new Error(message);
   }
 
   return response.json();
