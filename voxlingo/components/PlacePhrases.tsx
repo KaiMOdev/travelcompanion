@@ -17,12 +17,24 @@ type Props = {
   onSpeak: (text: string) => void;
 };
 
+function splitLocalText(text: string): { native: string; romanized: string | null } {
+  // Gemini often returns "日本語テキスト (romanization)" — split them
+  const match = text.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
+  if (match) return { native: match[1].trim(), romanized: match[2].trim() };
+  return { native: text, romanized: null };
+}
+
 function PhraseRow({ phrase, onSpeak }: { phrase: PlacePhrase; onSpeak: (text: string) => void }) {
+  const { native, romanized } = splitLocalText(phrase.local);
+
   return (
     <View style={styles.phraseRow}>
       <View style={styles.phraseContent}>
         <Text style={styles.phraseEnglish}>{phrase.english}</Text>
-        <Text style={styles.phraseLocal}>{phrase.local}</Text>
+        <Text style={styles.phraseLocal}>{native}</Text>
+        {romanized ? (
+          <Text style={styles.phraseRomanized}>{romanized}</Text>
+        ) : null}
         {phrase.context ? (
           <Text style={styles.phraseContext}>{phrase.context}</Text>
         ) : null}
@@ -135,6 +147,12 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: '700',
     marginTop: spacing.xs,
+  },
+  phraseRomanized: {
+    ...typography.label,
+    color: colors.textSecondary,
+    fontStyle: 'italic',
+    marginTop: 2,
   },
   phraseContext: {
     ...typography.caption,

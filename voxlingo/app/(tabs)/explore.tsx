@@ -74,7 +74,9 @@ export default function ExploreScreen() {
   function handleSpeak(text: string) {
     const langCode = getLanguageCode();
     if (langCode) {
-      speak(text, langCode);
+      // Strip inline romanization like "(hitotsu onegaishimasu.)" so TTS reads only native script
+      const cleaned = text.replace(/\s*\([^)]*\)\s*/g, '').trim();
+      speak(cleaned || text, langCode);
     }
   }
 
