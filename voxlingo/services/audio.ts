@@ -4,6 +4,26 @@ import * as FileSystem from 'expo-file-system/legacy';
 
 let recording: Audio.Recording | null = null;
 
+async function setRecordingMode() {
+  await Audio.setAudioModeAsync({
+    allowsRecordingIOS: true,
+    playsInSilentModeIOS: true,
+    staysActiveInBackground: false,
+    shouldDuckAndroid: true,
+    playThroughEarpieceAndroid: false,
+  });
+}
+
+async function setPlaybackMode() {
+  await Audio.setAudioModeAsync({
+    allowsRecordingIOS: false,
+    playsInSilentModeIOS: true,
+    staysActiveInBackground: false,
+    shouldDuckAndroid: true,
+    playThroughEarpieceAndroid: false,
+  });
+}
+
 // --- Native (iOS/Android) using expo-av ---
 
 async function startNativeRecording(): Promise<void> {
@@ -12,16 +32,11 @@ async function startNativeRecording(): Promise<void> {
     throw new Error('Microphone permission is required to record audio');
   }
 
-  // Reset audio mode before recording — fixes "streaming not supported
-  // while recording" error when TTS playback left the session in playback mode
-  await Audio.setAudioModeAsync({
-    allowsRecordingIOS: false,
-    playsInSilentModeIOS: true,
-  });
-  await Audio.setAudioModeAsync({
-    allowsRecordingIOS: true,
-    playsInSilentModeIOS: true,
-  });
+  if (recording) {
+    throw new Error('Recording already in progress');
+  }
+
+  await setRecordingMode();
 
   const newRecording = new Audio.Recording();
   await newRecording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
@@ -34,15 +49,13 @@ async function stopNativeRecording(): Promise<string> {
     throw new Error('No recording in progress');
   }
 
-  await recording.stopAndUnloadAsync();
-  // Reset audio mode so TTS/playback works after recording
-  await Audio.setAudioModeAsync({
-    allowsRecordingIOS: false,
-    playsInSilentModeIOS: true,
-  });
-  const uri = recording.getURI();
+  const current = recording;
   recording = null;
 
+  await current.stopAndUnloadAsync();
+  await setPlaybackMode();
+
+  const uri = current.getURI();
   if (!uri) {
     throw new Error('Recording failed — no file URI');
   }

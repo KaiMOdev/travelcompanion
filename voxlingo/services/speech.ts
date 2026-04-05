@@ -11,6 +11,7 @@ export function toBcp47(langCode: string): string {
 }
 
 let slowMode = false;
+let speaking = false;
 
 export function setSlowMode(slow: boolean): void {
   slowMode = slow;
@@ -20,30 +21,48 @@ export function getSlowMode(): boolean {
   return slowMode;
 }
 
+export function isSpeaking(): boolean {
+  return speaking;
+}
+
 type SpeakOptions = {
   onDone?: () => void;
 };
 
 export function speak(text: string, langCode: string, options?: SpeakOptions): void {
   try {
+    speaking = true;
     Speech.speak(text, {
       language: toBcp47(langCode),
       rate: slowMode ? 0.6 : 1.0,
-      onDone: options?.onDone,
+      onDone: () => {
+        speaking = false;
+        options?.onDone?.();
+      },
+      onStopped: () => {
+        speaking = false;
+        options?.onDone?.();
+      },
       onError: () => {
+        speaking = false;
         options?.onDone?.();
       },
     });
   } catch {
-    // expo-speech not available — silently fail
+    speaking = false;
     options?.onDone?.();
   }
 }
 
-export function stop(): void {
+export async function stop(): Promise<void> {
   try {
     Speech.stop();
   } catch {
     // Silently fail
   }
+  // expo-speech stop is not awaitable; small drain delay for iOS audio session
+  if (speaking) {
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  speaking = false;
 }

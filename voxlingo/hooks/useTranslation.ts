@@ -13,10 +13,11 @@ export function useTranslation() {
   const recordingRef = useRef(false);
 
   const speakTranslation = useCallback((text: string, langCode: string, id: string) => {
-    stop();
-    setSpeakingId(id);
-    speak(text, langCode, {
-      onDone: () => setSpeakingId(null),
+    void stop().then(() => {
+      setSpeakingId(id);
+      speak(text, langCode, {
+        onDone: () => setSpeakingId((current) => (current === id ? null : current)),
+      });
     });
   }, []);
 
@@ -24,9 +25,8 @@ export function useTranslation() {
     if (recordingRef.current) return;
     setError(null);
     // Stop any TTS playback and wait for audio session to release
-    stop();
+    await stop();
     setSpeakingId(null);
-    await new Promise((r) => setTimeout(r, 300));
     try {
       await startRecording();
       recordingRef.current = true;
