@@ -197,7 +197,7 @@ export default function CameraScreen() {
         </View>
       </SafeAreaView>
 
-      <CameraView ref={cameraRef} style={styles.camera} facing="back" flash={flash ? 'on' : 'off'} onCameraReady={() => setCameraReady(true)} />
+      <CameraView ref={cameraRef} style={styles.camera} facing="back" flash={flash ? 'on' : 'off'} enableTorch={flash} onCameraReady={() => setCameraReady(true)} />
 
       <View style={styles.shutterBar}>
         <TouchableOpacity
