@@ -14,8 +14,10 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { LanguagePicker } from '../../components/LanguagePicker';
 import { ErrorBanner } from '../../components/ErrorBanner';
-import { translateImage } from '../../services/vision';
-import { VisionResponse } from '../../types';
+import { MenuResult } from '../../components/MenuResult';
+import { SignResult } from '../../components/SignResult';
+import { translateImageSmart } from '../../services/vision';
+import { SmartVisionResponse } from '../../types';
 import { colors, shadow, spacing, radius } from '../../constants/theme';
 
 export default function CameraScreen() {
@@ -23,7 +25,7 @@ export default function CameraScreen() {
   const [targetLang, setTargetLang] = useState('nl');
   const [photo, setPhoto] = useState<string | null>(null);
   const [isTranslating, setIsTranslating] = useState(false);
-  const [result, setResult] = useState<VisionResponse | null>(null);
+  const [result, setResult] = useState<SmartVisionResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cameraReady, setCameraReady] = useState(false);
   const [torchEnabled, setTorchEnabled] = useState(false);
@@ -89,7 +91,7 @@ export default function CameraScreen() {
       setIsTranslating(true);
 
       try {
-        const visionResult = await translateImage(pic.base64, targetLang);
+        const visionResult = await translateImageSmart(pic.base64, targetLang);
         if (captureId.current !== thisCapture) return;
         setResult(visionResult);
       } catch (err: unknown) {
@@ -121,7 +123,7 @@ export default function CameraScreen() {
       setIsTranslating(true);
 
       try {
-        const visionResult = await translateImage(asset.base64, targetLang);
+        const visionResult = await translateImageSmart(asset.base64!, targetLang);
         if (captureId.current !== thisCapture) return;
         setResult(visionResult);
       } catch (err: unknown) {
@@ -162,7 +164,19 @@ export default function CameraScreen() {
 
           {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
 
-          {result && (
+          {result && result.contentType === 'menu' && (
+            <View style={styles.resultCard}>
+              <MenuResult result={result} />
+            </View>
+          )}
+
+          {result && result.contentType === 'sign' && (
+            <View style={styles.resultCard}>
+              <SignResult result={result} />
+            </View>
+          )}
+
+          {result && result.contentType === 'general' && (
             <View style={styles.resultCard}>
               <View style={styles.detectedBadge}>
                 <Text style={styles.detectedText}>🌐 {result.detectedLanguage}</Text>
