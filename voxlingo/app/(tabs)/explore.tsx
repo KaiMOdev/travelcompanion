@@ -58,7 +58,7 @@ export default function ExploreScreen() {
     let cancelled = false;
     fetchCities(destination).then((cities) => {
       if (!cancelled) setAllCities(cities);
-    }).catch(() => { /* non-critical */ });
+    }).catch((e) => { console.warn('Failed to load cities:', e); });
     return () => { cancelled = true; };
   }, [destination]);
 
@@ -72,7 +72,7 @@ export default function ExploreScreen() {
     setCityQuery('');
     setShowCitySuggestions(false);
     setLocationMismatch(null);
-    setLocationParams({ city });
+    setLocationParams({ city, lat: undefined, lng: undefined, radius: undefined });
     setLocationLabel(city);
   }, []);
 
