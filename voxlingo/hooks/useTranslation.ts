@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { startRecording, stopRecording } from '../services/audio';
-import { translateAudio } from '../services/translate';
+import { translateAudioStream } from '../services/translate';
 import { speak, stop } from '../services/speech';
 import { Translation } from '../types';
 
@@ -20,45 +20,82 @@ export function useTranslation() {
     });
   }, []);
 
-  const toggleRecord = useCallback(
+  const startRecord = useCallback(async () => {
+    if (recordingRef.current) return;
+    setError(null);
+    // Stop any TTS playback and wait for audio session to release
+    stop();
+    setSpeakingId(null);
+    await new Promise((r) => setTimeout(r, 300));
+    try {
+      await startRecording();
+      recordingRef.current = true;
+      setIsRecording(true);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to start recording';
+      setError(msg);
+    }
+  }, []);
+
+  const stopRecord = useCallback(
     async (sourceLang: string, targetLang: string) => {
-      setError(null);
+      if (!recordingRef.current) return;
+      recordingRef.current = false;
+      setIsRecording(false);
+      setIsTranslating(true);
 
-      if (!recordingRef.current) {
-        try {
-          await startRecording();
-          recordingRef.current = true;
-          setIsRecording(true);
-        } catch (err: unknown) {
-          const msg = err instanceof Error ? err.message : 'Failed to start recording';
-          setError(msg);
-        }
-      } else {
-        recordingRef.current = false;
-        setIsRecording(false);
-        setIsTranslating(true);
+      const id = Date.now().toString();
 
-        try {
-          const { audio, mimeType } = await stopRecording();
-          const result = await translateAudio(audio, sourceLang, targetLang, mimeType);
+      // Add a placeholder translation immediately so the user sees something
+      const placeholder: Translation = {
+        id,
+        originalText: '',
+        translatedText: '',
+        sourceLang,
+        targetLang,
+        timestamp: Date.now(),
+      };
+      setTranslations((prev) => [...prev, placeholder]);
 
-          const translation: Translation = {
-            id: Date.now().toString(),
-            originalText: result.originalText,
-            translatedText: result.translatedText,
-            sourceLang,
-            targetLang,
-            timestamp: Date.now(),
-          };
+      try {
+        const { audio, mimeType } = await stopRecording();
 
-          setTranslations((prev) => [...prev, translation]);
-          speakTranslation(result.translatedText, targetLang, translation.id);
-        } catch (err: unknown) {
-          const msg = err instanceof Error ? err.message : 'Translation failed';
-          setError(msg);
-        } finally {
-          setIsTranslating(false);
-        }
+        await translateAudioStream(
+          audio,
+          sourceLang,
+          targetLang,
+          mimeType,
+          (partial) => {
+            // Update the placeholder with streaming partial results
+            setTranslations((prev) =>
+              prev.map((t) =>
+                t.id === id
+                  ? {
+                      ...t,
+                      originalText: partial.originalText || t.originalText,
+                      translatedText: partial.translatedText || t.translatedText,
+                    }
+                  : t,
+              ),
+            );
+          },
+        );
+
+        // Speak the final translation
+        setTranslations((prev) => {
+          const final = prev.find((t) => t.id === id);
+          if (final && final.translatedText) {
+            speakTranslation(final.translatedText, targetLang, id);
+          }
+          return prev;
+        });
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Translation failed';
+        setError(msg);
+        // Remove the empty placeholder on error
+        setTranslations((prev) => prev.filter((t) => t.id !== id || t.translatedText));
+      } finally {
+        setIsTranslating(false);
       }
     },
     [speakTranslation],
@@ -82,7 +119,8 @@ export function useTranslation() {
     translations,
     error,
     speakingId,
-    toggleRecord,
+    startRecord,
+    stopRecord,
     replay,
     clearError,
   };
