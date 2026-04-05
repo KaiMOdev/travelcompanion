@@ -1192,7 +1192,7 @@ PHRASES: 5 phrases for shopping/markets (asking price, bargaining, asking about 
     } else if (hasLocation) {
       basePrompt = `The user is at coordinates (${lat.toFixed(4)}, ${lng.toFixed(4)}).${radiusClause}\n\n${basePrompt}`;
     } else if (city) {
-      basePrompt = `The user wants to explore ${city}. ALL places MUST be located within ${city}. For the "area" field, use the specific neighborhood or district within ${city}.\n\n${basePrompt}`;
+      basePrompt = `The user wants to explore ${city}. ALL places MUST be located within ${city} or its immediate surrounding neighborhoods. For the "area" field, use the specific neighborhood or district within ${city}.\n\n${basePrompt}`;
     }
 
     const prompt = basePrompt;
