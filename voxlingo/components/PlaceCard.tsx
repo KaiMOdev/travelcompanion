@@ -14,7 +14,12 @@ export function PlaceCard({ place, onPhrases, onDirections, onTranslate }: Props
   return (
     <View style={styles.card}>
       <View style={styles.header}>
-        <Text style={styles.name}>{place.name}</Text>
+        <View style={styles.nameRow}>
+          <Text style={styles.name}>{place.name}</Text>
+          {place.area ? (
+            <Text style={styles.area}>📍 {place.area}</Text>
+          ) : null}
+        </View>
         {place.localName ? (
           <Text style={styles.localName}>{place.localName}</Text>
         ) : null}
@@ -82,9 +87,21 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: spacing.xs,
   },
+  nameRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
   name: {
     ...typography.subtitle,
     color: colors.textPrimary,
+    flex: 1,
+    marginRight: spacing.sm,
+  },
+  area: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginTop: 2,
   },
   localName: {
     ...typography.body,
