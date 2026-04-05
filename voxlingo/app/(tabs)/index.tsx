@@ -7,6 +7,8 @@ import {
   TextInput,
   StyleSheet,
   ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -149,7 +151,7 @@ export default function TravelScreen() {
         </SafeAreaView>
       </View>
 
-      <View style={styles.body}>
+      <KeyboardAvoidingView style={styles.body} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ErrorBanner message={error || destError} onDismiss={clearError} />
 
         <View style={styles.languageCard}>
@@ -279,7 +281,7 @@ export default function TravelScreen() {
             onPressOut={handlePressOut}
           />
         )}
-      </View>
+      </KeyboardAvoidingView>
 
       <ShowCard
         translation={showCardItem}
