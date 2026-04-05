@@ -34,8 +34,7 @@ describe('audio service', () => {
     await startRecording();
     const result = await stopRecording();
 
-    expect(typeof result).toBe('string');
-    expect(result).toBe('base64audiodata');
+    expect(result).toEqual({ audio: 'base64audiodata', mimeType: 'audio/mp4' });
   });
 
   it('throws if stopRecording called without startRecording', async () => {

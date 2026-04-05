@@ -3,7 +3,7 @@ import { useTranslation } from './useTranslation';
 
 jest.mock('../services/audio', () => ({
   startRecording: jest.fn().mockResolvedValue(undefined),
-  stopRecording: jest.fn().mockResolvedValue('base64audio'),
+  stopRecording: jest.fn().mockResolvedValue({ audio: 'base64audio', mimeType: 'audio/mp4' }),
 }));
 
 jest.mock('../services/translate', () => ({

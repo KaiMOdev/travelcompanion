@@ -144,9 +144,11 @@ export async function startRecording(): Promise<void> {
   return startNativeRecording();
 }
 
-export async function stopRecording(): Promise<string> {
+export async function stopRecording(): Promise<{ audio: string; mimeType: string }> {
   if (Platform.OS === 'web') {
-    return stopWebRecording();
+    const audio = await stopWebRecording();
+    return { audio, mimeType: 'audio/wav' };
   }
-  return stopNativeRecording();
+  const audio = await stopNativeRecording();
+  return { audio, mimeType: 'audio/mp4' };
 }

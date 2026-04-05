@@ -36,6 +36,7 @@ describe('translateAudio', () => {
           audio: 'dGVzdA==',
           sourceLang: 'en',
           targetLang: 'es',
+          mimeType: 'audio/mp4',
         }),
       }),
     );

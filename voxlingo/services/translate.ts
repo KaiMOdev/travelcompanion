@@ -5,6 +5,7 @@ export async function translateAudio(
   audio: string,
   sourceLang: string,
   targetLang: string,
+  mimeType: string = 'audio/mp4',
 ): Promise<TranslateResponse> {
   let response: Response;
 
@@ -12,7 +13,7 @@ export async function translateAudio(
     response = await fetch(`${API_URL}/translate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ audio, sourceLang, targetLang }),
+      body: JSON.stringify({ audio, sourceLang, targetLang, mimeType }),
     });
   } catch {
     throw new Error('Could not connect to translation server');

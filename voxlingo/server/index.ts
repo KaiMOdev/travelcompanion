@@ -27,7 +27,8 @@ export function createApp() {
   const ai = new GoogleGenAI({ apiKey });
 
   app.post('/translate', async (req: Request, res: Response) => {
-    const { audio, sourceLang, targetLang } = req.body;
+    const { audio, sourceLang, targetLang, mimeType } = req.body;
+    const audioMime = mimeType || 'audio/mp4';
 
     if (!audio || !sourceLang || !targetLang) {
       res.status(400).json({ error: 'Missing required fields: audio, sourceLang, targetLang' });
@@ -50,7 +51,7 @@ export function createApp() {
           {
             role: 'user',
             parts: [
-              { inlineData: { mimeType: 'audio/mp4', data: audio } },
+              { inlineData: { mimeType: audioMime, data: audio } },
               { text: prompt },
             ],
           },

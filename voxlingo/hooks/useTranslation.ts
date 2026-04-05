@@ -39,8 +39,8 @@ export function useTranslation() {
         setIsTranslating(true);
 
         try {
-          const audio = await stopRecording();
-          const result = await translateAudio(audio, sourceLang, targetLang);
+          const { audio, mimeType } = await stopRecording();
+          const result = await translateAudio(audio, sourceLang, targetLang, mimeType);
 
           const translation: Translation = {
             id: Date.now().toString(),
