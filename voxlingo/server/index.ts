@@ -30,9 +30,6 @@ const COUNTRY_LANGS: Record<string, string> = {
   PH: 'Tagalog', SA: 'Arabic',
 };
 
-// Simple in-memory cache for destination content
-const phraseCache = new Map<string, { data: unknown[]; timestamp: number }>();
-const tipCache = new Map<string, { data: unknown[]; timestamp: number }>();
 const CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 export function createApp() {
@@ -46,6 +43,8 @@ export function createApp() {
 
   // --- Culture cache (in-memory + file-based) ---
   const cultureCache = new Map<string, { data: unknown[]; timestamp: number }>();
+  const phraseCache = new Map<string, { data: unknown[]; timestamp: number }>();
+  const tipCache = new Map<string, { data: unknown[]; timestamp: number }>();
 
   const CACHE_DIR = path.join(__dirname, 'cache');
   if (!fs.existsSync(CACHE_DIR)) {
@@ -79,10 +78,16 @@ export function createApp() {
       const cacheKey = file.replace('.json', '');
       const cached = readCacheFile(cacheKey);
       if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-        cultureCache.set(cacheKey, cached);
+        if (cacheKey.endsWith('-phrases')) {
+          phraseCache.set(cacheKey, cached);
+        } else if (cacheKey.endsWith('-tips')) {
+          tipCache.set(cacheKey, cached);
+        } else {
+          cultureCache.set(cacheKey, cached);
+        }
       }
     }
-    if (files.length > 0) console.log(`Loaded ${files.length} culture cache files`);
+    if (files.length > 0) console.log(`Loaded ${files.length} cache files`);
   } catch {
     // Cache dir may not exist yet
   }
@@ -423,14 +428,22 @@ Return JSON only: { "translations": ["...", "..."] }`;
       return;
     }
 
-    // Check cache
-    const cached = phraseCache.get(code.toUpperCase());
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-      res.json(cached.data);
+    const cacheKey = `${code.toUpperCase()}-phrases`;
+    // Check in-memory cache
+    const memoryCached = phraseCache.get(cacheKey);
+    if (memoryCached && Date.now() - memoryCached.timestamp < CACHE_TTL) {
+      res.json(memoryCached.data);
+      return;
+    }
+    // Check file cache
+    const fileCached = readCacheFile(cacheKey);
+    if (fileCached && Date.now() - fileCached.timestamp < CACHE_TTL) {
+      phraseCache.set(cacheKey, fileCached);
+      res.json(fileCached.data);
       return;
     }
 
-    const prompt = `Generate 10 essential travel phrases for a visitor to a ${langName}-speaking country.
+    const prompt = `Generate 30 essential travel phrases for a visitor to a ${langName}-speaking country.
 
 For each phrase, provide:
 - id: unique string (e.g. "1", "2")
@@ -440,7 +453,7 @@ For each phrase, provide:
 - category: one of "greeting", "food", "directions", "emergency", "polite", "shopping"
 - isEditorial: false
 
-Include phrases for: hello, thank you, excuse me, how much, where is, I'd like, the bill please, help, yes/no, goodbye.
+Include greetings, thanks, apologies, directions, food ordering, shopping, emergencies, polite expressions, transport, accommodation, time, weather, numbers, and social phrases.
 
 Return JSON array only: [{ "id": "1", "english": "...", "translated": "...", "romanized": "...", "category": "...", "isEditorial": false }]`;
 
@@ -458,7 +471,9 @@ Return JSON array only: [{ "id": "1", "english": "...", "translated": "...", "ro
       }
 
       const phrases = JSON.parse(jsonMatch[0]);
-      phraseCache.set(code.toUpperCase(), { data: phrases, timestamp: Date.now() });
+      const cacheEntry = { data: phrases, timestamp: Date.now() };
+      phraseCache.set(cacheKey, cacheEntry);
+      writeCacheFile(cacheKey, phrases);
       res.json(phrases);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to generate phrases';
@@ -475,14 +490,22 @@ Return JSON array only: [{ "id": "1", "english": "...", "translated": "...", "ro
       return;
     }
 
-    // Check cache
-    const cached = tipCache.get(code.toUpperCase());
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-      res.json(cached.data);
+    const cacheKey = `${code.toUpperCase()}-tips`;
+    // Check in-memory cache
+    const memoryCached = tipCache.get(cacheKey);
+    if (memoryCached && Date.now() - memoryCached.timestamp < CACHE_TTL) {
+      res.json(memoryCached.data);
+      return;
+    }
+    // Check file cache
+    const fileCached = readCacheFile(cacheKey);
+    if (fileCached && Date.now() - fileCached.timestamp < CACHE_TTL) {
+      tipCache.set(cacheKey, fileCached);
+      res.json(fileCached.data);
       return;
     }
 
-    const prompt = `Generate 5 practical cultural tips for a traveler visiting a ${langName}-speaking country.
+    const prompt = `Generate 30 practical cultural tips for a traveler visiting a ${langName}-speaking country.
 
 For each tip, provide:
 - id: unique string
@@ -492,7 +515,7 @@ For each tip, provide:
 - countryCode: "${code.toUpperCase()}"
 - sourceType: "ai-generated"
 
-Tips should be practical and actionable — things a tourist might not know. Avoid stereotypes.
+Cover etiquette, money, food, safety, social norms, language, transport, shopping, nightlife, health, weather, and local customs. Tips should be practical and actionable — things a tourist might not know. Avoid stereotypes.
 
 Return JSON array only: [{ "id": "1", "category": "...", "title": "...", "body": "...", "countryCode": "...", "sourceType": "ai-generated" }]`;
 
@@ -510,7 +533,9 @@ Return JSON array only: [{ "id": "1", "category": "...", "title": "...", "body":
       }
 
       const tips = JSON.parse(jsonMatch[0]);
-      tipCache.set(code.toUpperCase(), { data: tips, timestamp: Date.now() });
+      const cacheEntry = { data: tips, timestamp: Date.now() };
+      tipCache.set(cacheKey, cacheEntry);
+      writeCacheFile(cacheKey, tips);
       res.json(tips);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to generate tips';
