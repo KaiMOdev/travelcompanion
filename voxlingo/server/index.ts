@@ -1044,7 +1044,17 @@ Return JSON array ONLY: [{ "name": "...", "localName": "...", "description": "..
       return;
     }
 
-    const cacheKey = `explore-${code}-${category}`;
+    // Location-aware: optional lat, lng, radius (km), city
+    const lat = parseFloat(req.query.lat as string);
+    const lng = parseFloat(req.query.lng as string);
+    const radius = parseInt(req.query.radius as string, 10) || 10;
+    const city = (req.query.city as string) || '';
+    const hasLocation = !isNaN(lat) && !isNaN(lng);
+
+    // Cache key includes location context when provided
+    const locationKey = hasLocation ? `-${lat.toFixed(2)}_${lng.toFixed(2)}_${radius}km` : city ? `-${city}` : '';
+    const cacheKey = `explore-${code}-${category}${locationKey}`;
+
     // Check in-memory cache first
     const memoryCached = exploreCache.get(cacheKey);
     if (memoryCached && Date.now() - memoryCached.timestamp < CACHE_TTL) {
@@ -1059,7 +1069,18 @@ Return JSON array ONLY: [{ "name": "...", "localName": "...", "description": "..
       return;
     }
 
-    const prompt = categoryDef.prompt(langName, `a ${langName}-speaking country (${code})`, code);
+    let basePrompt = categoryDef.prompt(langName, `a ${langName}-speaking country (${code})`, code);
+
+    // Inject location context into prompt
+    if (hasLocation && city) {
+      basePrompt = `The user is currently near ${city} (${lat.toFixed(4)}, ${lng.toFixed(4)}). Focus on places within ${radius}km of this location.\n\n${basePrompt}`;
+    } else if (hasLocation) {
+      basePrompt = `The user is at coordinates (${lat.toFixed(4)}, ${lng.toFixed(4)}). Focus on places within ${radius}km of this location.\n\n${basePrompt}`;
+    } else if (city) {
+      basePrompt = `Focus on places in or near ${city}.\n\n${basePrompt}`;
+    }
+
+    const prompt = basePrompt;
 
     try {
       // 45s timeout — explore prompts generate 20 places with phrases

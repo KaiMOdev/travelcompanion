@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -18,15 +18,20 @@ import { PlaceCard } from '../../components/PlaceCard';
 import { PlacePhrases } from '../../components/PlacePhrases';
 import { DestinationPicker } from '../../components/DestinationPicker';
 import { ExplorePlace, ExploreCategoryId } from '../../types';
+import { ExploreLocationParams } from '../../services/explore';
 import { EXPLORE_CATEGORIES } from '../../constants/explore';
 import { colors, spacing, radius, typography } from '../../constants/theme';
 import { speak } from '../../services/speech';
 import { getDestination } from '../../constants/destinations';
+import { getCurrentLocation } from '../../services/location';
 
 const CHIP_CATEGORIES = EXPLORE_CATEGORIES.map((c) => ({
   key: c.id,
   label: `${c.emoji} ${c.label}`,
 }));
+
+const RADIUS_OPTIONS = [5, 10, 25, 0] as const;
+const RADIUS_LABELS: Record<number, string> = { 5: '5 km', 10: '10 km', 25: '25 km', 0: 'City-wide' };
 
 export default function ExploreScreen() {
   const router = useRouter();
@@ -35,7 +40,44 @@ export default function ExploreScreen() {
   const [showPicker, setShowPicker] = useState(false);
   const [selectedPlace, setSelectedPlace] = useState<ExplorePlace | null>(null);
   const [showPhrases, setShowPhrases] = useState(false);
+  const [locationParams, setLocationParams] = useState<ExploreLocationParams | undefined>(undefined);
+  const [locationLabel, setLocationLabel] = useState<string | null>(null);
+  const [locatingGps, setLocatingGps] = useState(false);
+  const [selectedRadius, setSelectedRadius] = useState<number>(10);
   const listRef = useRef<FlatList<ExplorePlace>>(null);
+
+  const handleLocate = useCallback(async () => {
+    setLocatingGps(true);
+    try {
+      const loc = await getCurrentLocation();
+      if (loc) {
+        const city = loc.address.split(',').find((p) => p.trim().length > 2)?.trim() || '';
+        setLocationParams({
+          lat: loc.latitude,
+          lng: loc.longitude,
+          radius: selectedRadius || undefined,
+          city,
+        });
+        setLocationLabel(city || `${loc.latitude.toFixed(2)}, ${loc.longitude.toFixed(2)}`);
+      }
+    } catch {
+      // Location permission denied or unavailable
+    } finally {
+      setLocatingGps(false);
+    }
+  }, [selectedRadius]);
+
+  const handleRadiusChange = useCallback((r: number) => {
+    setSelectedRadius(r);
+    if (locationParams?.lat != null) {
+      setLocationParams((prev) => prev ? { ...prev, radius: r || undefined } : prev);
+    }
+  }, [locationParams]);
+
+  const handleClearLocation = useCallback(() => {
+    setLocationParams(undefined);
+    setLocationLabel(null);
+  }, []);
 
   const {
     places,
@@ -46,7 +88,7 @@ export default function ExploreScreen() {
     prevPage,
     isLoading,
     error,
-  } = useExplore(destination, activeCategory);
+  } = useExplore(destination, activeCategory, locationParams);
 
   function handleCategorySelect(category: string) {
     setActiveCategory(category as ExploreCategoryId);
@@ -153,6 +195,40 @@ export default function ExploreScreen() {
         active={activeCategory}
         onSelect={handleCategorySelect}
       />
+
+      <View style={styles.locationBar}>
+        <TouchableOpacity
+          style={[styles.gpsButton, locationLabel && styles.gpsButtonActive]}
+          onPress={locationLabel ? handleClearLocation : handleLocate}
+          disabled={locatingGps}
+          activeOpacity={0.7}
+        >
+          {locatingGps ? (
+            <ActivityIndicator size="small" color={colors.primary} />
+          ) : (
+            <Text style={styles.gpsIcon}>{locationLabel ? '✕' : '📍'}</Text>
+          )}
+          <Text style={[styles.gpsLabel, locationLabel && styles.gpsLabelActive]}>
+            {locationLabel || 'Use my location'}
+          </Text>
+        </TouchableOpacity>
+        {locationLabel && (
+          <View style={styles.radiusRow}>
+            {RADIUS_OPTIONS.map((r) => (
+              <TouchableOpacity
+                key={r}
+                style={[styles.radiusChip, selectedRadius === r && styles.radiusChipActive]}
+                onPress={() => handleRadiusChange(r)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.radiusText, selectedRadius === r && styles.radiusTextActive]}>
+                  {RADIUS_LABELS[r]}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+      </View>
 
       {isLoading && (
         <View style={styles.loadingContainer}>
@@ -367,5 +443,56 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: spacing.xxl,
     paddingVertical: spacing.lg,
+  },
+  locationBar: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.background,
+  },
+  gpsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.full,
+    backgroundColor: colors.surfaceAlt,
+    alignSelf: 'flex-start',
+  },
+  gpsButtonActive: {
+    backgroundColor: colors.primaryLight,
+  },
+  gpsIcon: {
+    fontSize: 14,
+    marginRight: spacing.xs,
+  },
+  gpsLabel: {
+    ...typography.label,
+    color: colors.textSecondary,
+  },
+  gpsLabelActive: {
+    color: colors.primaryDark,
+  },
+  radiusRow: {
+    flexDirection: 'row',
+    marginTop: spacing.sm,
+    gap: spacing.xs,
+  },
+  radiusChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.full,
+    backgroundColor: colors.surfaceAlt,
+  },
+  radiusChipActive: {
+    backgroundColor: colors.primary,
+  },
+  radiusText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+  },
+  radiusTextActive: {
+    color: colors.textOnPrimary,
   },
 });
