@@ -21,13 +21,12 @@ export function TranslationBubble({ translation, isSpeaking, onReplay }: Props) 
         onPress={onReplay}
         activeOpacity={0.7}
       >
-        <Text style={styles.langLabel}>{getLanguageName(translation.targetLang)}</Text>
-        <View style={styles.targetRow}>
-          <Text style={[styles.text, styles.targetText, styles.targetTextFlex]}>
-            {translation.translatedText}
-          </Text>
-          <Text style={styles.speakerIcon}>{isSpeaking ? '🔊' : '🔈'}</Text>
-        </View>
+        <Text style={styles.langLabel}>
+          {getLanguageName(translation.targetLang)} {isSpeaking ? '🔊' : '🔈'}
+        </Text>
+        <Text style={[styles.text, styles.targetText]}>
+          {translation.translatedText}
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -42,7 +41,6 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 12,
     marginVertical: 2,
-    maxWidth: '95%',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -74,17 +72,5 @@ const styles = StyleSheet.create({
   },
   targetText: {
     color: '#1565c0',
-  },
-  targetRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  targetTextFlex: {
-    flex: 1,
-    flexShrink: 1,
-  },
-  speakerIcon: {
-    fontSize: 16,
-    marginLeft: 8,
   },
 });
