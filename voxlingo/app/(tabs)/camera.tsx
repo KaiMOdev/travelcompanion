@@ -23,7 +23,8 @@ export default function CameraScreen() {
   const [isTranslating, setIsTranslating] = useState(false);
   const [result, setResult] = useState<VisionResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const cameraRef = useRef<CameraView>(null);
+  const [cameraReady, setCameraReady] = useState(false);
+  const cameraRef = useRef<CameraView | null>(null);
   const captureId = useRef(0);
 
   // Web fallback
@@ -91,10 +92,13 @@ export default function CameraScreen() {
         if (captureId.current !== thisCapture) return;
         setResult(visionResult);
       } catch (err: unknown) {
+        if (captureId.current !== thisCapture) return;
         const msg = err instanceof Error ? err.message : 'Translation failed';
         setError(msg);
       } finally {
-        setIsTranslating(false);
+        if (captureId.current === thisCapture) {
+          setIsTranslating(false);
+        }
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to capture photo';
@@ -164,9 +168,9 @@ export default function CameraScreen() {
         />
       </View>
 
-      <CameraView ref={cameraRef} style={styles.camera} facing="back" />
+      <CameraView ref={cameraRef} style={styles.camera} facing="back" onCameraReady={() => setCameraReady(true)} />
 
-      <TouchableOpacity style={styles.shutterButton} onPress={handleCapture}>
+      <TouchableOpacity style={[styles.shutterButton, !cameraReady && { opacity: 0.4 }]} onPress={handleCapture} disabled={!cameraReady}>
         <Text style={styles.shutterIcon}>📸</Text>
       </TouchableOpacity>
     </SafeAreaView>
