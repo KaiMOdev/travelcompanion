@@ -23,7 +23,7 @@ Tab bar uses emoji icons — no SVG, no lucide. Labels: "Travel" and "Camera".
 
 ### `app/(tabs)/_layout.tsx`
 
-Tab navigator with two tabs. Emoji icons in tab bar labels. No custom TabBar component — use the default `@react-navigation/bottom-tabs` via Expo Router's `Tabs` component.
+Tab navigator with two tabs. Emoji icons in tab bar labels. No custom TabBar component — use Expo Router's `Tabs` component.
 
 ### `app/(tabs)/camera.tsx`
 
@@ -51,7 +51,7 @@ HTTP client for the vision endpoint:
 translateImage(image: string, targetLang: string): Promise<VisionResponse>
 ```
 
-Posts `{ image, targetLang }` to `POST /vision` on the backend. Same error handling pattern as `services/translate.ts`.
+Posts `{ image, targetLang }` to `POST /vision` on the backend. Same error handling pattern as `services/translate.ts`. Reuses the same `getApiUrl()` function for LAN IP detection.
 
 ## 4. Modified Files
 
@@ -71,8 +71,13 @@ Add `POST /vision` endpoint:
 - Validates `targetLang` against `LANG_NAMES`
 - Sends to Gemini REST (`gemini-2.5-flash`, `generateContent`) as multimodal: inline JPEG image + text prompt
 - Prompt: `"Detect all text in this image. Identify the language. Translate all detected text to {targetName}. The translatedText MUST be in {targetName}, not English. Return JSON only: { "detectedLanguage": "...", "originalText": "...", "translatedText": "..." }"`
-- Parses JSON from response, returns it
+- Parses JSON from response, validates output fields (detectedLanguage, originalText, translatedText must be non-empty strings)
+- Returns validated response
 - On error, returns `{ error: string }` with status 500
+
+Also apply these improvements (from GPT-5 review):
+- Raise `express.json` limit from `10mb` to `25mb` (images can be large)
+- Validate Gemini response fields before returning to client
 
 Gemini call shape:
 ```typescript
@@ -103,6 +108,21 @@ type VisionResponse = {
   originalText: string;
   translatedText: string;
 };
+```
+
+### `app.json`
+
+Add CAMERA permission for Android and camera usage description for iOS:
+
+```json
+"android": {
+  "permissions": ["CAMERA", "RECORD_AUDIO"]
+},
+"ios": {
+  "infoPlist": {
+    "NSCameraUsageDescription": "Camera access is needed to translate photos of text."
+  }
+}
 ```
 
 ## 5. Camera Screen State
@@ -147,6 +167,7 @@ No custom hook — state is simple enough to manage inline with `useState`.
 - Camera permission denied: show message "Camera access is needed to translate photos" with no shutter button
 - Backend/Gemini error: show ErrorBanner (reuse existing component), auto-dismiss, photo stays visible so user can retry
 - No text detected: Gemini returns empty originalText — show "No text detected in this image"
+- Camera not available on web: show "Camera is not available on web. Use a mobile device."
 
 ## 9. Dependencies
 
@@ -156,5 +177,6 @@ No custom hook — state is simple enough to manage inline with `useState`.
 ## 10. Constraints
 
 - Same constraints as rest of app: SDK 54, no reanimated, no SVG icons, emoji only, StyleSheet.create, platform shadows
-- Camera not available on web in Expo Go — camera tab will show "Camera not available on web" message when `Platform.OS === 'web'`
+- `fontWeight` must use named values (`'bold'`, `'600'`) not numeric strings (`'700'`) — numeric strings crash Android
+- Camera not available on web in Expo Go — show fallback message
 - Image quality 0.7 to keep payload size manageable (base64 JPEG)
