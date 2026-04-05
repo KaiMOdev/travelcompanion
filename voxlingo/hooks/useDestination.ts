@@ -5,6 +5,7 @@ import { Phrase, CulturalTip } from '../types';
 import { getDestination } from '../constants/destinations';
 
 const STORAGE_KEY = 'voxlingo_destination';
+const HOTEL_STORAGE_KEY = 'voxlingo_hotel_address';
 
 export function useDestination() {
   const [destination, setDestinationState] = useState<string | null>(null);
@@ -12,6 +13,7 @@ export function useDestination() {
   const [tips, setTips] = useState<CulturalTip[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hotelAddress, setHotelAddressState] = useState<string>('');
 
   const setDestination = useCallback(async (countryCode: string) => {
     setDestinationState(countryCode);
@@ -34,14 +36,21 @@ export function useDestination() {
     }
   }, []);
 
+  const setHotelAddress = useCallback(async (address: string) => {
+    setHotelAddressState(address);
+    await AsyncStorage.setItem(HOTEL_STORAGE_KEY, address);
+  }, []);
+
   const loadSaved = useCallback(async () => {
     try {
-      const saved = await AsyncStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        await setDestination(saved);
-      }
+      const [saved, savedHotel] = await Promise.all([
+        AsyncStorage.getItem(STORAGE_KEY),
+        AsyncStorage.getItem(HOTEL_STORAGE_KEY),
+      ]);
+      if (savedHotel) setHotelAddressState(savedHotel);
+      if (saved) await setDestination(saved);
     } catch {
-      // No saved destination — that's fine
+      // No saved data — that's fine
     }
   }, [setDestination]);
 
@@ -57,6 +66,8 @@ export function useDestination() {
     isLoading,
     error,
     setDestination,
+    hotelAddress,
+    setHotelAddress,
     loadSaved,
     getLanguageCode,
   };

@@ -4,6 +4,7 @@ import {
   Text,
   FlatList,
   TouchableOpacity,
+  TextInput,
   StyleSheet,
   ScrollView,
 } from 'react-native';
@@ -32,7 +33,7 @@ export default function TravelScreen() {
   const [targetLang, setTargetLang] = useState('es');
   const { isRecording, isTranslating, translations, error, speakingId, startRecord, stopRecord, replay, clearError, clearTranslations } =
     useTranslation();
-  const { destination, phrases, tips, isLoading: destLoading, error: destError, setDestination, loadSaved, getLanguageCode } =
+  const { destination, phrases, tips, isLoading: destLoading, error: destError, setDestination, hotelAddress, setHotelAddress, loadSaved, getLanguageCode } =
     useDestination();
   const flatListRef = useRef<FlatList>(null);
   const [showCardItem, setShowCardItem] = useState<Translation | null>(null);
@@ -181,6 +182,17 @@ export default function TravelScreen() {
               }}
             />
             <TipCard tips={tips} />
+            <View style={styles.hotelSection}>
+              <Text style={styles.hotelLabel}>Your hotel / accommodation</Text>
+              <TextInput
+                style={styles.hotelInput}
+                placeholder="Enter address to show taxi drivers"
+                placeholderTextColor={colors.textMuted}
+                value={hotelAddress}
+                onChangeText={setHotelAddress}
+                multiline
+              />
+            </View>
             <TouchableOpacity style={styles.taxiButton} onPress={() => setShowTaxi(true)}>
               <Text style={styles.taxiButtonText}>Show location to taxi driver</Text>
             </TouchableOpacity>
@@ -278,6 +290,7 @@ export default function TravelScreen() {
 
       <TaxiCard
         visible={showTaxi}
+        hotelAddress={hotelAddress || undefined}
         onClose={() => setShowTaxi(false)}
       />
     </View>
@@ -410,6 +423,27 @@ const styles = StyleSheet.create({
   travelContent: {
     flex: 1,
     marginTop: spacing.lg,
+  },
+  hotelSection: {
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  hotelLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
+    letterSpacing: 0.5,
+  },
+  hotelInput: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    fontSize: 15,
+    color: colors.textPrimary,
+    borderWidth: 1,
+    borderColor: colors.border,
+    minHeight: 44,
   },
   taxiButton: {
     backgroundColor: colors.headerBg,
