@@ -97,7 +97,14 @@ Add right after `const ai = new GoogleGenAI({ apiKey });` (around line 43):
   }
 ```
 
-Note: The `cultureCache` Map is already declared later in the file. Move the declaration `const cultureCache = new Map<string, { data: unknown[]; timestamp: number }>();` up before these helpers so it's available. Remove it from its current location (around line 575).
+**IMPORTANT**: The `cultureCache` Map is currently declared later in the file (around line 575). You MUST move it up before these helpers. Delete the line `const cultureCache = new Map<string, { data: unknown[]; timestamp: number }>();` from its current location and place it right before the `CACHE_DIR` line:
+
+```typescript
+  const cultureCache = new Map<string, { data: unknown[]; timestamp: number }>();
+
+  // --- File-based cache for culture content ---
+  const CACHE_DIR = path.join(__dirname, 'cache');
+```
 
 - [ ] **Step 4: Update culture endpoint to use file cache**
 
@@ -206,7 +213,7 @@ export function useCulture(destination: string | null, category: CultureCategory
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const memCacheRef = useRef(new Map<string, CultureEntry[]>());
+  const memCacheRef = useRef(new Map<string, { data: CultureEntry[]; timestamp: number }>());
 
   // Reset page when destination or category changes
   useEffect(() => {
@@ -221,10 +228,10 @@ export function useCulture(destination: string | null, category: CultureCategory
 
     const key = `${destination}:${category}`;
 
-    // 1. Check in-memory cache
+    // 1. Check in-memory cache (with TTL)
     const memCached = memCacheRef.current.get(key);
-    if (memCached) {
-      setAllEntries(memCached);
+    if (memCached && Date.now() - memCached.timestamp < CACHE_TTL) {
+      setAllEntries(memCached.data);
       return;
     }
 
@@ -238,7 +245,7 @@ export function useCulture(destination: string | null, category: CultureCategory
         if (stored && !cancelled) {
           const parsed: CacheEntry = JSON.parse(stored);
           if (Date.now() - parsed.timestamp < CACHE_TTL) {
-            memCacheRef.current.set(key, parsed.data);
+            memCacheRef.current.set(key, { data: parsed.data, timestamp: parsed.timestamp });
             setAllEntries(parsed.data);
             return;
           }
@@ -255,7 +262,7 @@ export function useCulture(destination: string | null, category: CultureCategory
       try {
         const data = await fetchCultureCategory(destination, category, controller.signal);
         if (!controller.signal.aborted) {
-          memCacheRef.current.set(key, data);
+          memCacheRef.current.set(key, { data, timestamp: Date.now() });
           setAllEntries(data);
           // Persist to AsyncStorage
           try {
@@ -356,7 +363,7 @@ With:
 Add after the `const [showPicker, setShowPicker] = useState(false);` line:
 
 ```typescript
-  const cultureListRef = useRef<FlatList>(null);
+  const cultureListRef = useRef<FlatList<CultureEntry>>(null);
 ```
 
 Add `useRef` to the React import at the top if not already there:
