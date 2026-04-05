@@ -1,18 +1,17 @@
-import { TranslateResponse, TranslateErrorResponse } from '../types';
+import { VisionResponse, TranslateErrorResponse } from '../types';
 import { API_URL } from './api';
 
-export async function translateAudio(
-  audio: string,
-  sourceLang: string,
+export async function translateImage(
+  image: string,
   targetLang: string,
-): Promise<TranslateResponse> {
+): Promise<VisionResponse> {
   let response: Response;
 
   try {
-    response = await fetch(`${API_URL}/translate`, {
+    response = await fetch(`${API_URL}/vision`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ audio, sourceLang, targetLang }),
+      body: JSON.stringify({ image, targetLang }),
     });
   } catch {
     throw new Error('Could not connect to translation server');
@@ -20,7 +19,7 @@ export async function translateAudio(
 
   if (!response.ok) {
     const body: TranslateErrorResponse = await response.json();
-    throw new Error(body.error || 'Translation failed');
+    throw new Error(body.error || 'Image translation failed');
   }
 
   return response.json();
