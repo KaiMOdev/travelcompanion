@@ -69,3 +69,23 @@ export type EmergencyInfo = {
     dontSpeak: string;
   };
 };
+
+export type CultureCategory =
+  | 'phrases'
+  | 'tips'
+  | 'dos-donts'
+  | 'gestures'
+  | 'food'
+  | 'tipping'
+  | 'sacred-sites'
+  | 'numbers';
+
+export type CultureEntry = {
+  id: string;
+  category: CultureCategory;
+  title: string;
+  body: string;
+  countryCode: string;
+  speakable?: string;
+  romanized?: string;
+};

@@ -42,6 +42,8 @@ export type {
   Destination,
   Phrase,
   CulturalTip,
+  CultureCategory,
+  CultureEntry,
   MenuItem,
   MenuTranslation,
   SignTranslation,
