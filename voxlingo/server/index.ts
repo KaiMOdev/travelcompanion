@@ -58,16 +58,19 @@ export function createApp() {
 
     const sourceName = LANG_NAMES[sourceLang];
     const targetName = LANG_NAMES[targetLang];
-    const prompt = `You are a travel translator. Transcribe the following audio spoken in ${sourceName}. Then translate the transcription to ${targetName}.
+    const prompt = `You are a travel translator. First determine whether the audio contains clear human speech in ${sourceName}.
 
 Rules:
+- If there is NO clear speech — only silence, background noise, static, breathing, tapping, or unintelligible audio — return:
+  { "originalText": "", "translatedText": "", "noSpeechDetected": true }
+- Do NOT guess or infer words from noise
+- Only transcribe words that are actually clearly audible
+- If speech is present, transcribe it and translate to natural, conversational ${targetName}
 - The translatedText MUST be in ${targetName}, not English
-- Use natural, conversational ${targetName} (not overly formal or robotic)
 - Preserve the speaker's tone (casual, polite, urgent, etc.)
 - Handle slang, idioms, and colloquialisms naturally — translate the meaning, not word-for-word
-- If the audio is unclear, provide your best interpretation
 
-Return JSON only: { "originalText": "...", "translatedText": "..." }`;
+Return JSON only: { "originalText": "...", "translatedText": "...", "noSpeechDetected": false }`;
 
     try {
       const result = await ai.models.generateContent({
@@ -91,6 +94,13 @@ Return JSON only: { "originalText": "...", "translatedText": "..." }`;
       }
 
       const parsed = JSON.parse(jsonMatch[0]);
+
+      // Allow empty results when no speech detected
+      if (parsed.noSpeechDetected) {
+        res.json({ originalText: '', translatedText: '', noSpeechDetected: true });
+        return;
+      }
+
       if (!parsed.originalText || !parsed.translatedText) {
         res.status(500).json({ error: 'Incomplete response from Gemini' });
         return;
@@ -98,6 +108,7 @@ Return JSON only: { "originalText": "...", "translatedText": "..." }`;
       res.json({
         originalText: parsed.originalText,
         translatedText: parsed.translatedText,
+        noSpeechDetected: false,
       });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Translation failed';

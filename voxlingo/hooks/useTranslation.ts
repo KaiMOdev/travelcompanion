@@ -78,7 +78,7 @@ export function useTranslation() {
           ),
         );
 
-        let finalResult: { originalText: string; translatedText: string };
+        let finalResult: { originalText: string; translatedText: string; noSpeechDetected?: boolean };
 
         if (Platform.OS === 'web') {
           // Web supports ReadableStream — use streaming for progressive updates
@@ -111,6 +111,13 @@ export function useTranslation() {
                 : t,
             ),
           );
+        }
+
+        // If no speech was detected, remove the placeholder silently
+        if (finalResult.noSpeechDetected || !finalResult.originalText?.trim()) {
+          setTranslations((prev) => prev.filter((t) => t.id !== id));
+          setIsTranslating(false);
+          return;
         }
 
         // Speak the final translation
