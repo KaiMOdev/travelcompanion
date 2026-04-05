@@ -45,12 +45,14 @@ export default function TravelScreen() {
     loadSaved();
   }, []);
 
-  // Auto-set target language when destination changes (unless user manually changed it)
+  // Fresh start when destination changes — reset language, clear translations
   useEffect(() => {
     const langCode = getLanguageCode();
-    if (langCode && !targetLangManuallySet) {
+    if (langCode) {
       setTargetLang(langCode);
+      setTargetLangManuallySet(false);
     }
+    clearTranslations();
   }, [destination]);
 
   const handleSwapLanguages = () => {
