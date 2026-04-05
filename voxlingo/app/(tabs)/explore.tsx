@@ -72,6 +72,7 @@ export default function ExploreScreen() {
     setCityQuery('');
     setShowCitySuggestions(false);
     setLocationMismatch(null);
+    setSelectedRadius(0); // City-wide by default when selecting a city
     setLocationParams({ city, lat: undefined, lng: undefined, radius: undefined });
     setLocationLabel(city);
   }, []);
