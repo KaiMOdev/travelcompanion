@@ -20,7 +20,7 @@ export function ErrorBanner({ message, onDismiss }: Props) {
   return (
     <View style={styles.banner}>
       <Text style={styles.icon}>⚠️</Text>
-      <Text style={styles.text}>{message}</Text>
+      <Text style={styles.text} numberOfLines={3}>{message}</Text>
     </View>
   );
 }
@@ -34,12 +34,12 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.lg,
     marginVertical: spacing.sm,
     borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.errorBorder,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.accent,
   },
   icon: {
-    fontSize: 16,
-    marginRight: spacing.sm,
+    fontSize: 18,
+    marginRight: spacing.md,
   },
   text: {
     color: colors.error,

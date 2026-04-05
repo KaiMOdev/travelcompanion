@@ -28,12 +28,13 @@ export default function CameraScreen() {
   const cameraRef = useRef<CameraView | null>(null);
   const captureId = useRef(0);
 
-  // Web fallback
   if (Platform.OS === 'web') {
     return (
       <SafeAreaView style={styles.containerLight}>
         <View style={styles.centered}>
-          <Text style={styles.emptyIcon}>📷</Text>
+          <View style={styles.emptyCircle}>
+            <Text style={styles.emptyIconLarge}>📷</Text>
+          </View>
           <Text style={styles.emptyTitle}>Camera not available</Text>
           <Text style={styles.fallbackText}>
             Use a mobile device to translate photos of text.
@@ -43,7 +44,6 @@ export default function CameraScreen() {
     );
   }
 
-  // Permission loading
   if (!permission) {
     return (
       <SafeAreaView style={styles.containerLight}>
@@ -54,15 +54,16 @@ export default function CameraScreen() {
     );
   }
 
-  // Permission denied
   if (!permission.granted) {
     return (
       <SafeAreaView style={styles.containerLight}>
         <View style={styles.centered}>
-          <Text style={styles.emptyIcon}>🔒</Text>
+          <View style={styles.emptyCircle}>
+            <Text style={styles.emptyIconLarge}>🔒</Text>
+          </View>
           <Text style={styles.emptyTitle}>Camera access needed</Text>
           <Text style={styles.fallbackText}>
-            Grant camera permission to translate photos of menus, signs, and documents.
+            Grant camera permission to translate menus, signs, and documents.
           </Text>
           <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
             <Text style={styles.permissionButtonText}>Grant Permission</Text>
@@ -74,16 +75,9 @@ export default function CameraScreen() {
 
   const handleCapture = async () => {
     if (!cameraRef.current) return;
-
     try {
-      const pic = await cameraRef.current.takePictureAsync({
-        base64: true,
-        quality: 0.7,
-      });
-      if (!pic || !pic.base64) {
-        setError('Failed to capture photo');
-        return;
-      }
+      const pic = await cameraRef.current.takePictureAsync({ base64: true, quality: 0.7 });
+      if (!pic || !pic.base64) { setError('Failed to capture photo'); return; }
 
       captureId.current += 1;
       const thisCapture = captureId.current;
@@ -98,16 +92,12 @@ export default function CameraScreen() {
         setResult(visionResult);
       } catch (err: unknown) {
         if (captureId.current !== thisCapture) return;
-        const msg = err instanceof Error ? err.message : 'Translation failed';
-        setError(msg);
+        setError(err instanceof Error ? err.message : 'Translation failed');
       } finally {
-        if (captureId.current === thisCapture) {
-          setIsTranslating(false);
-        }
+        if (captureId.current === thisCapture) setIsTranslating(false);
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to capture photo';
-      setError(msg);
+      setError(err instanceof Error ? err.message : 'Failed to capture photo');
     }
   };
 
@@ -118,10 +108,12 @@ export default function CameraScreen() {
     setError(null);
   };
 
-  // Result / translating state
   if (photo) {
     return (
-      <SafeAreaView style={styles.containerLight}>
+      <View style={styles.containerLight}>
+        <SafeAreaView edges={['top']} style={styles.resultHeader}>
+          <Text style={styles.resultHeaderText}>📷 Translation Result</Text>
+        </SafeAreaView>
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
           <View style={styles.photoCard}>
             <Image source={{ uri: photo }} style={styles.photo} resizeMode="cover" />
@@ -134,25 +126,18 @@ export default function CameraScreen() {
             </View>
           )}
 
-          {error && (
-            <ErrorBanner message={error} onDismiss={() => setError(null)} />
-          )}
+          {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
 
           {result && (
             <View style={styles.resultCard}>
               <View style={styles.detectedBadge}>
-                <Text style={styles.detectedText}>
-                  🌐 {result.detectedLanguage}
-                </Text>
+                <Text style={styles.detectedText}>🌐 {result.detectedLanguage}</Text>
               </View>
-
               <View style={styles.resultSection}>
                 <Text style={styles.resultLabel}>ORIGINAL</Text>
                 <Text style={styles.originalText}>{result.originalText}</Text>
               </View>
-
               <View style={styles.resultDivider} />
-
               <View style={styles.resultSection}>
                 <Text style={styles.resultLabel}>TRANSLATION</Text>
                 <Text style={styles.translatedText}>
@@ -162,33 +147,27 @@ export default function CameraScreen() {
             </View>
           )}
         </ScrollView>
-
         <TouchableOpacity style={styles.newPhotoButton} onPress={handleReset}>
           <Text style={styles.newPhotoText}>📷  Take New Photo</Text>
         </TouchableOpacity>
-      </SafeAreaView>
+      </View>
     );
   }
 
-  // Viewfinder state
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.pickerBar}>
+    <View style={styles.container}>
+      <SafeAreaView edges={['top']} style={styles.pickerBar}>
         <Text style={styles.pickerTitle}>TRANSLATE TO</Text>
         <View style={styles.pickerWrapper}>
-          <LanguagePicker
-            selectedCode={targetLang}
-            onSelect={setTargetLang}
-            label=""
-          />
+          <LanguagePicker selectedCode={targetLang} onSelect={setTargetLang} label="" />
         </View>
-      </View>
+      </SafeAreaView>
 
       <CameraView ref={cameraRef} style={styles.camera} facing="back" onCameraReady={() => setCameraReady(true)} />
 
       <View style={styles.shutterBar}>
         <TouchableOpacity
-          style={[styles.shutterButton, !cameraReady && styles.shutterDisabled]}
+          style={[styles.shutterOuter, !cameraReady && styles.shutterDisabled]}
           onPress={handleCapture}
           disabled={!cameraReady}
           activeOpacity={0.8}
@@ -198,7 +177,7 @@ export default function CameraScreen() {
           </View>
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -217,9 +196,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: spacing.xxxl,
   },
-  emptyIcon: {
-    fontSize: 48,
-    marginBottom: spacing.lg,
+  emptyCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.primaryGlow,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.xl,
+  },
+  emptyIconLarge: {
+    fontSize: 36,
   },
   emptyTitle: {
     fontSize: 20,
@@ -238,8 +225,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     paddingHorizontal: spacing.xxl,
     paddingVertical: 14,
-    borderRadius: radius.md,
-    ...shadow('md'),
+    borderRadius: radius.full,
+    ...shadow('glow'),
   },
   permissionButtonText: {
     color: colors.textOnPrimary,
@@ -247,10 +234,10 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   pickerBar: {
-    backgroundColor: colors.surfaceElevated,
+    backgroundColor: colors.surface,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.divider,
   },
@@ -272,15 +259,15 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xl,
     alignItems: 'center',
   },
-  shutterButton: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    backgroundColor: colors.surfaceElevated,
+  shutterOuter: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 4,
+    borderColor: colors.shutterRing,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 3,
-    borderColor: colors.primary,
+    ...shadow('glow'),
   },
   shutterDisabled: {
     opacity: 0.4,
@@ -289,18 +276,29 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: colors.surfaceElevated,
+    backgroundColor: colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
   },
   shutterIcon: {
-    fontSize: 32,
+    fontSize: 30,
+  },
+  resultHeader: {
+    backgroundColor: colors.headerBg,
+    paddingHorizontal: spacing.xxl,
+    paddingBottom: spacing.lg,
+    paddingTop: spacing.sm,
+  },
+  resultHeaderText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.headerText,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: spacing.xl,
+    paddingBottom: spacing.xxl,
   },
   photoCard: {
     margin: spacing.lg,
@@ -311,7 +309,7 @@ const styles = StyleSheet.create({
   photo: {
     width: '100%',
     height: 280,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceAlt,
   },
   loadingContainer: {
     alignItems: 'center',
@@ -325,13 +323,13 @@ const styles = StyleSheet.create({
   resultCard: {
     marginHorizontal: spacing.lg,
     padding: spacing.xl,
-    backgroundColor: colors.surfaceElevated,
+    backgroundColor: colors.surface,
     borderRadius: radius.lg,
     ...shadow('sm'),
   },
   detectedBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: colors.primaryLight,
+    backgroundColor: colors.primaryGlow,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
     borderRadius: radius.full,
@@ -339,8 +337,8 @@ const styles = StyleSheet.create({
   },
   detectedText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: colors.primary,
+    fontWeight: 'bold',
+    color: colors.primaryDark,
   },
   resultSection: {
     marginVertical: spacing.sm,
@@ -372,7 +370,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     paddingVertical: 16,
     alignItems: 'center',
-    ...shadow('md'),
+    ...shadow('glow'),
   },
   newPhotoText: {
     color: colors.textOnPrimary,

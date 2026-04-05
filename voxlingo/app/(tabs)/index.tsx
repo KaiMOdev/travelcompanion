@@ -32,67 +32,78 @@ export default function TravelScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.headerBar}>
-        <Text style={styles.header}>VoxLingo</Text>
-        <Text style={styles.tagline}>Voice Translation</Text>
-      </View>
-
-      <ErrorBanner message={error} onDismiss={clearError} />
-
-      <View style={styles.languageCard}>
-        <View style={styles.languageBar}>
-          <LanguagePicker
-            selectedCode={sourceLang}
-            onSelect={setSourceLang}
-            label="From"
-          />
-          <TouchableOpacity onPress={handleSwapLanguages} style={styles.swapButton}>
-            <Text style={styles.swapIcon}>⇄</Text>
-          </TouchableOpacity>
-          <LanguagePicker
-            selectedCode={targetLang}
-            onSelect={setTargetLang}
-            label="To"
-          />
-        </View>
-      </View>
-
-      <FlatList
-        ref={flatListRef}
-        style={styles.list}
-        data={translations}
-        keyExtractor={(item: Translation) => item.id}
-        onContentSizeChange={() => {
-          if (translations.length > 0) {
-            flatListRef.current?.scrollToEnd({ animated: true });
-          }
-        }}
-        renderItem={({ item }) => (
-          <TranslationBubble
-            translation={item}
-            isSpeaking={item.id === speakingId}
-            onReplay={() => replay(item.id)}
-          />
-        )}
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>🌍</Text>
-            <Text style={styles.emptyTitle}>Ready to translate</Text>
-            <Text style={styles.emptyText}>
-              Tap the microphone and start speaking
-            </Text>
+    <View style={styles.container}>
+      <View style={styles.headerBlock}>
+        <SafeAreaView edges={['top']}>
+          <View style={styles.headerContent}>
+            <View>
+              <Text style={styles.headerTitle}>VoxLingo</Text>
+              <Text style={styles.headerSub}>Voice Translation</Text>
+            </View>
+            <Text style={styles.headerEmoji}>🌍</Text>
           </View>
-        }
-        contentContainerStyle={translations.length === 0 ? styles.emptyContainer : styles.listContent}
-      />
+        </SafeAreaView>
+      </View>
 
-      <RecordButton
-        isRecording={isRecording}
-        isTranslating={isTranslating}
-        onPress={handleRecord}
-      />
-    </SafeAreaView>
+      <View style={styles.body}>
+        <ErrorBanner message={error} onDismiss={clearError} />
+
+        <View style={styles.languageCard}>
+          <View style={styles.languageBar}>
+            <LanguagePicker
+              selectedCode={sourceLang}
+              onSelect={setSourceLang}
+              label="FROM"
+            />
+            <TouchableOpacity onPress={handleSwapLanguages} style={styles.swapButton}>
+              <Text style={styles.swapIcon}>⇄</Text>
+            </TouchableOpacity>
+            <LanguagePicker
+              selectedCode={targetLang}
+              onSelect={setTargetLang}
+              label="TO"
+            />
+          </View>
+        </View>
+
+        <FlatList
+          ref={flatListRef}
+          style={styles.list}
+          data={translations}
+          keyExtractor={(item: Translation) => item.id}
+          onContentSizeChange={() => {
+            if (translations.length > 0) {
+              flatListRef.current?.scrollToEnd({ animated: true });
+            }
+          }}
+          renderItem={({ item }) => (
+            <TranslationBubble
+              translation={item}
+              isSpeaking={item.id === speakingId}
+              onReplay={() => replay(item.id)}
+            />
+          )}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <View style={styles.emptyCircle}>
+                <Text style={styles.emptyIcon}>🎙️</Text>
+              </View>
+              <Text style={styles.emptyTitle}>Ready to translate</Text>
+              <Text style={styles.emptyText}>
+                Tap the mic below and speak naturally
+              </Text>
+            </View>
+          }
+          contentContainerStyle={translations.length === 0 ? styles.emptyContainer : styles.listContent}
+        />
+
+        <RecordButton
+          isRecording={isRecording}
+          isTranslating={isTranslating}
+          onPress={handleRecord}
+        />
+      </View>
+    </View>
   );
 }
 
@@ -101,54 +112,71 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  headerBar: {
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.xl,
-    backgroundColor: colors.background,
+  headerBlock: {
+    backgroundColor: colors.headerBg,
+    paddingBottom: spacing.xl,
+    borderBottomLeftRadius: radius.xl,
+    borderBottomRightRadius: radius.xl,
   },
-  header: {
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing.xxl,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
+  },
+  headerTitle: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: colors.primary,
+    color: colors.headerText,
     letterSpacing: -0.5,
   },
-  tagline: {
+  headerSub: {
     fontSize: 13,
-    color: colors.textMuted,
+    color: colors.headerSubtext,
     marginTop: 2,
-    letterSpacing: 0.3,
+    letterSpacing: 0.5,
+  },
+  headerEmoji: {
+    fontSize: 36,
+  },
+  body: {
+    flex: 1,
   },
   languageCard: {
     marginHorizontal: spacing.lg,
-    marginBottom: spacing.sm,
-    backgroundColor: colors.surfaceElevated,
+    marginTop: -spacing.md,
+    backgroundColor: colors.surface,
     borderRadius: radius.lg,
     padding: spacing.lg,
-    ...shadow('sm'),
+    ...shadow('md'),
   },
   languageBar: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   swapButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.surface,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     marginHorizontal: spacing.sm,
     marginTop: spacing.lg,
+    ...shadow('glow'),
   },
   swapIcon: {
     fontSize: 18,
-    color: colors.primary,
+    color: colors.textOnPrimary,
+    fontWeight: 'bold',
   },
   list: {
     flex: 1,
   },
   listContent: {
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.md,
   },
   emptyContainer: {
     flex: 1,
@@ -158,9 +186,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: spacing.xxxl,
   },
+  emptyCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.primaryGlow,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.xl,
+  },
   emptyIcon: {
-    fontSize: 48,
-    marginBottom: spacing.lg,
+    fontSize: 36,
   },
   emptyTitle: {
     fontSize: 20,

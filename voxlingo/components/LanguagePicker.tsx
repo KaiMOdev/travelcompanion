@@ -28,8 +28,12 @@ export function LanguagePicker({ selectedCode, onSelect, label }: Props) {
         onPress={() => setOpen(true)}
         activeOpacity={0.7}
       >
-        <Text style={styles.buttonText}>{getLanguageName(selectedCode)}</Text>
-        <Text style={styles.chevron}>▾</Text>
+        <Text style={styles.buttonText} numberOfLines={1}>
+          {getLanguageName(selectedCode)}
+        </Text>
+        <View style={styles.chevronCircle}>
+          <Text style={styles.chevron}>▾</Text>
+        </View>
       </TouchableOpacity>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
@@ -39,11 +43,10 @@ export function LanguagePicker({ selectedCode, onSelect, label }: Props) {
           onPress={() => setOpen(false)}
         >
           <View style={styles.modal}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {label || 'Select Language'}
-              </Text>
-            </View>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>
+              {label || 'Select Language'}
+            </Text>
             <FlatList
               data={LANGUAGES}
               keyExtractor={(item) => item.code}
@@ -67,7 +70,9 @@ export function LanguagePicker({ selectedCode, onSelect, label }: Props) {
                     {item.name}
                   </Text>
                   {item.code === selectedCode && (
-                    <Text style={styles.checkmark}>✓</Text>
+                    <View style={styles.checkCircle}>
+                      <Text style={styles.checkmark}>✓</Text>
+                    </View>
                   )}
                 </TouchableOpacity>
               )}
@@ -85,21 +90,18 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: 'bold',
     color: colors.textMuted,
     marginBottom: spacing.xs,
-    textAlign: 'center',
     textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    letterSpacing: 1,
   },
   button: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderWidth: 1.5,
-    borderColor: colors.border,
+    backgroundColor: colors.surfaceAlt,
     borderRadius: radius.md,
-    backgroundColor: colors.surfaceElevated,
     paddingHorizontal: spacing.lg,
     paddingVertical: 14,
   },
@@ -109,46 +111,55 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     flex: 1,
   },
-  chevron: {
-    fontSize: 16,
-    color: colors.textMuted,
+  chevronCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginLeft: spacing.sm,
+  },
+  chevron: {
+    fontSize: 12,
+    color: colors.textOnPrimary,
   },
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.xxl,
+    backgroundColor: 'rgba(10, 22, 40, 0.6)',
+    justifyContent: 'flex-end',
   },
   modal: {
-    backgroundColor: colors.surfaceElevated,
-    borderRadius: radius.xl,
-    maxHeight: '70%',
-    overflow: 'hidden',
-    ...shadow('lg'),
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    maxHeight: '75%',
+    paddingBottom: spacing.xxl,
   },
-  modalHeader: {
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.xl,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.divider,
+  modalHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.border,
+    alignSelf: 'center',
+    marginTop: spacing.md,
+    marginBottom: spacing.lg,
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
     color: colors.textPrimary,
-    textAlign: 'center',
+    paddingHorizontal: spacing.xxl,
+    marginBottom: spacing.lg,
   },
   option: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.xl,
-    paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.divider,
+    paddingHorizontal: spacing.xxl,
+    paddingVertical: 15,
   },
   optionSelected: {
-    backgroundColor: colors.primaryLight,
+    backgroundColor: colors.primaryGlow,
   },
   optionText: {
     fontSize: 16,
@@ -159,9 +170,17 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: 'bold',
   },
+  checkCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   checkmark: {
-    fontSize: 16,
-    color: colors.primary,
+    fontSize: 14,
+    color: colors.textOnPrimary,
     fontWeight: 'bold',
   },
 });

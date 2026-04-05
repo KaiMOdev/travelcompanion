@@ -15,7 +15,7 @@ export function TranslationBubble({ translation, isSpeaking, onReplay }: Props) 
     <View style={styles.container}>
       <View style={styles.sourceRow}>
         <View style={[styles.bubble, styles.sourceBubble]}>
-          <Text style={styles.langLabel}>
+          <Text style={styles.langBadge}>
             {getLanguageName(translation.sourceLang)}
           </Text>
           <Text style={styles.sourceText}>{translation.originalText}</Text>
@@ -28,7 +28,7 @@ export function TranslationBubble({ translation, isSpeaking, onReplay }: Props) 
           activeOpacity={0.7}
         >
           <View style={styles.targetHeader}>
-            <Text style={styles.langLabel}>
+            <Text style={[styles.langBadge, styles.targetBadge]}>
               {getLanguageName(translation.targetLang)}
             </Text>
             <Text style={styles.speakerIcon}>{isSpeaking ? '🔊' : '🔈'}</Text>
@@ -44,7 +44,7 @@ export function TranslationBubble({ translation, isSpeaking, onReplay }: Props) 
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: spacing.sm,
+    marginVertical: spacing.xs,
     paddingHorizontal: spacing.lg,
   },
   sourceRow: {
@@ -60,44 +60,48 @@ const styles = StyleSheet.create({
   bubble: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     maxWidth: '88%',
     ...shadow('sm'),
   },
   sourceBubble: {
     backgroundColor: colors.sourceBubble,
-    borderTopLeftRadius: radius.sm,
+    borderBottomLeftRadius: radius.sm,
   },
   targetBubble: {
     backgroundColor: colors.targetBubble,
-    borderTopRightRadius: radius.sm,
+    borderBottomRightRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 191, 166, 0.15)',
   },
   targetHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: spacing.xs,
   },
-  langLabel: {
-    fontSize: 11,
-    fontWeight: '600',
+  langBadge: {
+    fontSize: 10,
+    fontWeight: 'bold',
     color: colors.textMuted,
     textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: spacing.xs,
+    letterSpacing: 1,
+  },
+  targetBadge: {
+    color: colors.primaryDark,
   },
   speakerIcon: {
     fontSize: 14,
-    marginBottom: spacing.xs,
   },
   sourceText: {
     fontSize: 16,
     color: colors.textPrimary,
-    lineHeight: 22,
+    lineHeight: 23,
   },
   targetText: {
     fontSize: 16,
     color: colors.targetText,
     fontWeight: '600',
-    lineHeight: 22,
+    lineHeight: 23,
   },
 });
