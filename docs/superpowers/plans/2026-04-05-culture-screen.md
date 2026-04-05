@@ -573,8 +573,7 @@ Return JSON array ONLY: [{ "id": "1", "title": "1 — One", "body": "...", "spea
       return;
     }
 
-    const countryName = Object.entries(COUNTRY_LANGS).find(([k]) => k === code)?.[0] || code;
-    const prompt = categoryDef.prompt(langName, countryName);
+    const prompt = categoryDef.prompt(langName, `a ${langName}-speaking country (${code})`);
 
     try {
       const result = await ai.models.generateContent({
@@ -602,9 +601,10 @@ Return JSON array ONLY: [{ "id": "1", "title": "1 — One", "body": "...", "spea
         return;
       }
 
-      // Set countryCode and category on each entry
-      const enriched = valid.map((e: Record<string, unknown>) => ({
+      // Set countryCode, category, and unique IDs on each entry
+      const enriched = valid.map((e: Record<string, unknown>, i: number) => ({
         ...e,
+        id: `${code}-${category}-${i + 1}`,
         countryCode: code,
         category,
       }));
@@ -900,15 +900,15 @@ const CULTURE_API_CATEGORIES = new Set<CultureCategory>([
 ]);
 
 export default function CultureScreen() {
-  const { destination, setDestination, getLanguageCode } = useDestinationContext();
+  const { destination, setDestination, getLanguageCode, isLoaded } = useDestinationContext();
   const [activeCategory, setActiveCategory] = useState<CultureCategory>('phrases');
   const [showPicker, setShowPicker] = useState(false);
 
   const cultureCategory = CULTURE_API_CATEGORIES.has(activeCategory) ? activeCategory : null;
-  const { phrases, isLoading: phrasesLoading } = usePhrases(
+  const { phrases, isLoading: phrasesLoading, error: phrasesError } = usePhrases(
     activeCategory === 'phrases' ? destination : null
   );
-  const { tips, isLoading: tipsLoading } = useTips(
+  const { tips, isLoading: tipsLoading, error: tipsError } = useTips(
     activeCategory === 'tips' ? destination : null
   );
   const { entries, isLoading: cultureLoading, error: cultureError } = useCulture(
@@ -921,6 +921,21 @@ export default function CultureScreen() {
   const handleSpeak = (text: string) => {
     if (langCode) speak(text, langCode);
   };
+
+  const activeError = activeCategory === 'phrases' ? phrasesError
+    : activeCategory === 'tips' ? tipsError
+    : cultureError;
+
+  // Wait for AsyncStorage to load saved destination before rendering
+  if (!isLoaded) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator color={colors.primary} />
+        </View>
+      </View>
+    );
+  }
 
   if (!destination) {
     return (
@@ -985,13 +1000,13 @@ export default function CultureScreen() {
         </View>
       )}
 
-      {cultureError && !isLoading && (
+      {activeError && !isLoading && (
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>{cultureError}</Text>
+          <Text style={styles.errorText}>{activeError}</Text>
         </View>
       )}
 
-      {!isLoading && !cultureError && activeCategory === 'phrases' && (
+      {!isLoading && !activeError && activeCategory === 'phrases' && (
         <FlatList
           data={phrases}
           keyExtractor={(item: Phrase) => item.id}
@@ -1004,13 +1019,13 @@ export default function CultureScreen() {
         />
       )}
 
-      {!isLoading && !cultureError && activeCategory === 'tips' && (
+      {!isLoading && !activeError && activeCategory === 'tips' && (
         <View style={styles.tipsContainer}>
           <TipCard tips={tips} />
         </View>
       )}
 
-      {!isLoading && !cultureError && CULTURE_API_CATEGORIES.has(activeCategory) && (
+      {!isLoading && !activeError && CULTURE_API_CATEGORIES.has(activeCategory) && (
         <FlatList
           data={entries}
           keyExtractor={(item: CultureEntry) => item.id}
@@ -1276,9 +1291,11 @@ import { TipCard } from '../../components/TipCard';
 
 Replace the `useDestination` call (line 38-39) with:
 ```typescript
-  const { destination, setDestination, hotelAddress, setHotelAddress, saveHotelAddress, getLanguageCode } =
+  const { destination, setDestination, hotelAddress, setHotelAddress, saveHotelAddress, getLanguageCode, isLoaded } =
     useDestinationContext();
 ```
+
+Note: `isLoaded` is available if needed for future enhancements, but the Travel screen doesn't gate on it since it has a valid empty state (the "Where are you traveling?" prompt) that works fine during the brief load.
 
 Remove the `loadSaved` call — context handles it now. Remove lines 48-50:
 ```typescript
@@ -1318,16 +1335,21 @@ Remove the PhraseRow/TipCard section (lines 191-199). Replace the `travelContent
         )}
 ```
 
-- [ ] **Step 2: Delete the old useDestination hook**
+- [ ] **Step 2: Verify no other files import useDestination**
+
+Run: `grep -r "useDestination" voxlingo/ --include="*.ts" --include="*.tsx" -l`
+Expected: Only `voxlingo/hooks/useDestination.ts` itself (no other consumers). If other files still import it, update them to use `useDestinationContext` first.
+
+- [ ] **Step 3: Delete the old useDestination hook**
 
 Delete `voxlingo/hooks/useDestination.ts`.
 
-- [ ] **Step 3: Run typecheck**
+- [ ] **Step 4: Run typecheck**
 
 Run: `cd voxlingo && npx tsc --noEmit`
 Expected: No errors
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add voxlingo/app/(tabs)/index.tsx
