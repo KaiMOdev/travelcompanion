@@ -1062,10 +1062,11 @@ Return JSON array ONLY: [{ "name": "...", "localName": "...", "description": "..
     const prompt = categoryDef.prompt(langName, `a ${langName}-speaking country (${code})`, code);
 
     try {
+      // 45s timeout — explore prompts generate 20 places with phrases
       const result = await callGemini({
         model: GEMINI_MODEL,
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      });
+      }, 45000);
 
       const text = result.text ?? '';
       const jsonMatch = text.match(/\[[\s\S]*\]/);
