@@ -42,7 +42,7 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 12,
     marginVertical: 2,
-    maxWidth: '85%',
+    maxWidth: '95%',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -81,6 +81,7 @@ const styles = StyleSheet.create({
   },
   targetTextFlex: {
     flex: 1,
+    flexShrink: 1,
   },
   speakerIcon: {
     fontSize: 16,
