@@ -19,11 +19,12 @@ import { VisionResponse } from '../../types';
 export default function CameraScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [targetLang, setTargetLang] = useState('en');
-  const [photo, setPhoto] = useState<{ uri: string; base64: string } | null>(null);
+  const [photo, setPhoto] = useState<string | null>(null);
   const [isTranslating, setIsTranslating] = useState(false);
   const [result, setResult] = useState<VisionResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const cameraRef = useRef<CameraView>(null);
+  const captureId = useRef(0);
 
   // Web fallback
   if (Platform.OS === 'web') {
@@ -78,13 +79,16 @@ export default function CameraScreen() {
         return;
       }
 
-      setPhoto({ uri: pic.uri, base64: pic.base64 });
+      captureId.current += 1;
+      const thisCapture = captureId.current;
+      setPhoto(pic.uri);
       setResult(null);
       setError(null);
       setIsTranslating(true);
 
       try {
         const visionResult = await translateImage(pic.base64, targetLang);
+        if (captureId.current !== thisCapture) return;
         setResult(visionResult);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Translation failed';
@@ -99,6 +103,7 @@ export default function CameraScreen() {
   };
 
   const handleReset = () => {
+    captureId.current += 1;
     setPhoto(null);
     setResult(null);
     setError(null);
@@ -109,7 +114,7 @@ export default function CameraScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <ScrollView style={styles.scrollView}>
-          <Image source={{ uri: photo.uri }} style={styles.photo} resizeMode="contain" />
+          <Image source={{ uri: photo }} style={styles.photo} resizeMode="contain" />
 
           {isTranslating && (
             <View style={styles.loadingContainer}>

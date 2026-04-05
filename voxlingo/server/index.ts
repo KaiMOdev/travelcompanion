@@ -65,6 +65,10 @@ export function createApp() {
       }
 
       const parsed = JSON.parse(jsonMatch[0]);
+      if (!parsed.originalText || !parsed.translatedText) {
+        res.status(500).json({ error: 'Incomplete response from Gemini' });
+        return;
+      }
       res.json({
         originalText: parsed.originalText,
         translatedText: parsed.translatedText,
