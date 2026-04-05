@@ -24,9 +24,35 @@ async function setPlaybackMode() {
   });
 }
 
+// Platform-specific recording options
+// Android: THREE_GPP/AMR_NB avoids "streaming not supported" error after TTS
+// iOS: MPEG4AAC for higher quality
+const RECORDING_OPTIONS: Audio.RecordingOptions = {
+  android: {
+    extension: '.3gp',
+    outputFormat: Audio.AndroidOutputFormat.THREE_GPP,
+    audioEncoder: Audio.AndroidAudioEncoder.AMR_NB,
+    sampleRate: 16000,
+    numberOfChannels: 1,
+    bitRate: 12200,
+  },
+  ios: {
+    extension: '.m4a',
+    outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
+    audioQuality: Audio.IOSAudioQuality.HIGH,
+    sampleRate: 44100,
+    numberOfChannels: 1,
+    bitRate: 128000,
+    linearPCMBitDepth: 16,
+    linearPCMIsBigEndian: false,
+    linearPCMIsFloat: false,
+  },
+  web: {},
+};
+
 // --- Native (iOS/Android) using expo-av ---
 
-async function startNativeRecording(retries = 3): Promise<void> {
+async function startNativeRecording(): Promise<void> {
   const { status } = await Audio.requestPermissionsAsync();
   if (status !== 'granted') {
     throw new Error('Microphone permission is required to record audio');
@@ -41,25 +67,13 @@ async function startNativeRecording(retries = 3): Promise<void> {
     recording = null;
   }
 
-  for (let attempt = 0; attempt < retries; attempt++) {
-    try {
-      await setPlaybackMode();
-      await setRecordingMode();
+  await setPlaybackMode();
+  await setRecordingMode();
 
-      const newRecording = new Audio.Recording();
-      await newRecording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
-      await newRecording.startAsync();
-      recording = newRecording;
-      return;
-    } catch (err) {
-      if (attempt < retries - 1) {
-        // Wait longer each retry for audio session to release
-        await new Promise((r) => setTimeout(r, 300 * (attempt + 1)));
-      } else {
-        throw err;
-      }
-    }
-  }
+  const newRecording = new Audio.Recording();
+  await newRecording.prepareToRecordAsync(RECORDING_OPTIONS);
+  await newRecording.startAsync();
+  recording = newRecording;
 }
 
 async function stopNativeRecording(): Promise<string> {
@@ -192,5 +206,6 @@ export async function stopRecording(): Promise<{ audio: string; mimeType: string
     return { audio, mimeType: 'audio/wav' };
   }
   const audio = await stopNativeRecording();
-  return { audio, mimeType: 'audio/mp4' };
+  const mimeType = Platform.OS === 'android' ? 'audio/3gpp' : 'audio/mp4';
+  return { audio, mimeType };
 }
