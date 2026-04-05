@@ -106,7 +106,7 @@ export default function CameraScreen() {
   const handleGallery = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         base64: true,
         quality: 0.7,
       });
