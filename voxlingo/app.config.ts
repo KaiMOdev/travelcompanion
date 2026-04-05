@@ -24,6 +24,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       firebaseProjectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID ?? "",
       googleClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ?? "",
       googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? "",
+      serverApiKey: process.env.EXPO_PUBLIC_SERVER_API_KEY ?? "",
     },
   };
 };

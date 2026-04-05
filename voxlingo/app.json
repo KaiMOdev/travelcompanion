@@ -1,10 +1,14 @@
 {
   "expo": {
-    "name": "voxlingo",
-    "slug": "voxlingo",
+    "name": "WanderVox",
+    "slug": "wandervox",
     "version": "1.0.0",
-    "scheme": "voxlingo",
-    "platforms": ["ios", "android", "web"],
+    "scheme": "wandervox",
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -21,18 +25,37 @@
       }
     },
     "android": {
+      "package": "com.wandervox.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#1a1a2e"
       },
-      "permissions": ["CAMERA", "RECORD_AUDIO"]
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
     },
     "plugins": [
-      "expo-router"
-    ]
+      "expo-router",
+      "expo-updates"
+    ],
+    "updates": {
+      "url": "https://u.expo.dev/d06e82ab-37ca-4fdf-9e53-145fb23f3d9c"
+    },
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "d06e82ab-37ca-4fdf-9e53-145fb23f3d9c"
+      }
+    },
+    "owner": "lamsitsolutions"
   }
 }
