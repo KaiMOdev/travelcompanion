@@ -7,12 +7,12 @@ import {
   StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useTranslation } from '../hooks/useTranslation';
-import { LanguagePicker } from '../components/LanguagePicker';
-import { TranslationBubble } from '../components/TranslationBubble';
-import { RecordButton } from '../components/RecordButton';
-import { ErrorBanner } from '../components/ErrorBanner';
-import { Translation } from '../types';
+import { useTranslation } from '../../hooks/useTranslation';
+import { LanguagePicker } from '../../components/LanguagePicker';
+import { TranslationBubble } from '../../components/TranslationBubble';
+import { RecordButton } from '../../components/RecordButton';
+import { ErrorBanner } from '../../components/ErrorBanner';
+import { Translation } from '../../types';
 
 export default function TravelScreen() {
   const [sourceLang, setSourceLang] = useState('en');

@@ -18,28 +18,7 @@ async function startNativeRecording(): Promise<void> {
   });
 
   const newRecording = new Audio.Recording();
-  await newRecording.prepareToRecordAsync({
-    android: {
-      extension: '.wav',
-      outputFormat: 3,
-      audioEncoder: 1,
-      sampleRate: 16000,
-      numberOfChannels: 1,
-      bitRate: 256000,
-    },
-    ios: {
-      extension: '.wav',
-      outputFormat: 'linearPCM' as any,
-      audioQuality: 127,
-      sampleRate: 16000,
-      numberOfChannels: 1,
-      bitRate: 256000,
-      linearPCMBitDepth: 16,
-      linearPCMIsBigEndian: false,
-      linearPCMIsFloat: false,
-    },
-    web: {},
-  });
+  await newRecording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
   await newRecording.startAsync();
   recording = newRecording;
 }

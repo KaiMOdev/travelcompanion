@@ -4,6 +4,8 @@ import { Platform } from 'react-native';
 jest.mock('expo-av', () => ({
   Audio: {
     setAudioModeAsync: jest.fn(),
+    requestPermissionsAsync: jest.fn().mockResolvedValue({ status: 'granted' }),
+    RecordingOptionsPresets: { HIGH_QUALITY: {} },
     Recording: jest.fn().mockImplementation(() => ({
       prepareToRecordAsync: jest.fn(),
       startAsync: jest.fn(),
@@ -13,8 +15,8 @@ jest.mock('expo-av', () => ({
   },
 }));
 
-// Mock expo-file-system
-jest.mock('expo-file-system', () => ({
+// Mock expo-file-system/legacy
+jest.mock('expo-file-system/legacy', () => ({
   readAsStringAsync: jest.fn().mockResolvedValue('base64audiodata'),
   EncodingType: { Base64: 'base64' },
 }));
