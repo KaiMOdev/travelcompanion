@@ -12,15 +12,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from '../../hooks/useTranslation';
-import { useDestination } from '../../hooks/useDestination';
+import { useDestinationContext } from '../../contexts/DestinationContext';
 import { LanguagePicker } from '../../components/LanguagePicker';
 import { TranslationBubble } from '../../components/TranslationBubble';
 import { RecordButton } from '../../components/RecordButton';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import { ShowCard } from '../../components/ShowCard';
 import { DestinationPicker } from '../../components/DestinationPicker';
-import { PhraseRow } from '../../components/PhraseRow';
-import { TipCard } from '../../components/TipCard';
 import { EmergencyCard } from '../../components/EmergencyCard';
 import { TaxiCard } from '../../components/TaxiCard';
 import { Translation } from '../../types';
@@ -35,8 +33,8 @@ export default function TravelScreen() {
   const [targetLang, setTargetLang] = useState('es');
   const { isRecording, isTranslating, translations, error, speakingId, startRecord, stopRecord, replay, clearError, clearTranslations } =
     useTranslation();
-  const { destination, phrases, tips, isLoading: destLoading, error: destError, setDestination, hotelAddress, setHotelAddress, saveHotelAddress, loadSaved, getLanguageCode } =
-    useDestination();
+  const { destination, setDestination, hotelAddress, setHotelAddress, saveHotelAddress, getLanguageCode, isLoaded } =
+    useDestinationContext();
   const flatListRef = useRef<FlatList>(null);
   const [showCardItem, setShowCardItem] = useState<Translation | null>(null);
   const [slowSpeech, setSlowSpeech] = useState(getSlowMode());
@@ -44,10 +42,6 @@ export default function TravelScreen() {
   const [showDestinationPicker, setShowDestinationPicker] = useState(false);
   const [showEmergency, setShowEmergency] = useState(false);
   const [showTaxi, setShowTaxi] = useState(false);
-
-  useEffect(() => {
-    loadSaved();
-  }, []);
 
   // Fresh start when destination changes — reset language, clear translations
   const hasInitialized = useRef(false);
@@ -152,7 +146,7 @@ export default function TravelScreen() {
       </View>
 
       <KeyboardAvoidingView style={styles.body} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <ErrorBanner message={error || destError} onDismiss={clearError} />
+        <ErrorBanner message={error} onDismiss={clearError} />
 
         <View style={styles.languageCard}>
           <View style={styles.languageBar}>
@@ -188,15 +182,6 @@ export default function TravelScreen() {
 
         {destination && translations.length === 0 && (
           <ScrollView style={styles.travelContent} showsVerticalScrollIndicator={false}>
-            <PhraseRow
-              phrases={phrases}
-              isLoading={destLoading}
-              onSpeak={(text) => {
-                const langCode = getLanguageCode();
-                if (langCode) speak(text, langCode);
-              }}
-            />
-            <TipCard tips={tips} />
             <View style={styles.hotelSection}>
               <Text style={styles.hotelLabel}>Your hotel / accommodation</Text>
               <TextInput
