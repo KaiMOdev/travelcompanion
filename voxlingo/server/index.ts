@@ -575,8 +575,8 @@ Return JSON array ONLY: [{ "id": "1", "title": "1 — One", "body": "...", "spea
   const cultureCache = new Map<string, { data: unknown[]; timestamp: number }>();
 
   app.get('/destination/:code/culture/:category', async (req: Request, res: Response) => {
-    const code = req.params.code.toUpperCase();
-    const category = req.params.category;
+    const code = (req.params.code as string).toUpperCase();
+    const category = req.params.category as string;
     const langName = COUNTRY_LANGS[code];
 
     if (!langName) {
