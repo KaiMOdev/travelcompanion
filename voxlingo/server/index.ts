@@ -30,7 +30,7 @@ const COUNTRY_LANGS: Record<string, string> = {
   PT: 'Portuguese', CZ: 'Czech', HU: 'Hungarian', HR: 'Croatian',
   RO: 'Romanian', SE: 'Swedish', NO: 'Norwegian', DK: 'Danish',
   FI: 'Finnish', RU: 'Russian', UA: 'Ukrainian', IN: 'Hindi',
-  PH: 'Tagalog', SA: 'Arabic',
+  PH: 'Tagalog', BE: 'Dutch', SA: 'Arabic',
 };
 
 const CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days

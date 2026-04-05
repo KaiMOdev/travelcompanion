@@ -32,6 +32,7 @@ export const DESTINATIONS: Destination[] = [
   { countryCode: 'UA', countryName: 'Ukraine', primaryLanguage: 'uk', isHero: false },
   { countryCode: 'IN', countryName: 'India', primaryLanguage: 'hi', isHero: false },
   { countryCode: 'PH', countryName: 'Philippines', primaryLanguage: 'tl', isHero: false },
+  { countryCode: 'BE', countryName: 'Belgium', primaryLanguage: 'nl', isHero: false },
   { countryCode: 'SA', countryName: 'Saudi Arabia', primaryLanguage: 'ar', isHero: false },
 ];
 
