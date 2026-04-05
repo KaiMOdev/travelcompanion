@@ -12,6 +12,7 @@ export function useTranslation() {
   const [error, setError] = useState<string | null>(null);
   const [speakingId, setSpeakingId] = useState<string | null>(null);
   const recordingRef = useRef(false);
+  const recordStartTime = useRef(0);
 
   const speakTranslation = useCallback((text: string, langCode: string, id: string) => {
     void stop().then(() => {
@@ -31,6 +32,7 @@ export function useTranslation() {
     try {
       await startRecording();
       recordingRef.current = true;
+      recordStartTime.current = Date.now();
       setIsRecording(true);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to start recording';
@@ -61,8 +63,9 @@ export function useTranslation() {
       try {
         const { audio, mimeType } = await stopRecording();
 
-        // Discard very short recordings (< 2KB = ~0.5s silence/noise)
-        if (audio.length < 2000) {
+        // Discard recordings shorter than 1 second — accidental taps
+        const recordingDuration = Date.now() - recordStartTime.current;
+        if (recordingDuration < 1000) {
           setTranslations((prev) => prev.filter((t) => t.id !== id));
           setIsTranslating(false);
           return;
