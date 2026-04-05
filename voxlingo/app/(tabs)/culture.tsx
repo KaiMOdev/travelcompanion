@@ -15,7 +15,6 @@ import { useCulture } from '../../hooks/useCulture';
 import { CategoryChips } from '../../components/CategoryChips';
 import { CultureCard } from '../../components/CultureCard';
 import { PhraseCard } from '../../components/PhraseCard';
-import { TipCard } from '../../components/TipCard';
 import { DestinationPicker } from '../../components/DestinationPicker';
 import { CultureCategory, CultureEntry, Phrase, CulturalTip } from '../../types';
 import { colors, spacing, radius, typography, shadow } from '../../constants/theme';
@@ -43,14 +42,30 @@ export default function CultureScreen() {
   const [activeCategory, setActiveCategory] = useState<CultureCategory>('phrases');
   const [showPicker, setShowPicker] = useState(false);
   const cultureListRef = useRef<FlatList<CultureEntry>>(null);
+  const phrasesListRef = useRef<FlatList<Phrase>>(null);
+  const tipsListRef = useRef<FlatList<CulturalTip>>(null);
 
   const cultureCategory = CULTURE_API_CATEGORIES.has(activeCategory) ? activeCategory : null;
-  const { phrases, isLoading: phrasesLoading, error: phrasesError } = usePhrases(
-    activeCategory === 'phrases' ? destination : null
-  );
-  const { tips, isLoading: tipsLoading, error: tipsError } = useTips(
-    activeCategory === 'tips' ? destination : null
-  );
+  const {
+    phrases,
+    page: phrasesPage,
+    totalPages: phrasesTotalPages,
+    total: phrasesTotal,
+    nextPage: phrasesNextPage,
+    prevPage: phrasesPrevPage,
+    isLoading: phrasesLoading,
+    error: phrasesError,
+  } = usePhrases(activeCategory === 'phrases' ? destination : null);
+  const {
+    tips,
+    page: tipsPage,
+    totalPages: tipsTotalPages,
+    total: tipsTotal,
+    nextPage: tipsNextPage,
+    prevPage: tipsPrevPage,
+    isLoading: tipsLoading,
+    error: tipsError,
+  } = useTips(activeCategory === 'tips' ? destination : null);
   const {
     entries,
     page,
@@ -66,6 +81,26 @@ export default function CultureScreen() {
 
   const handleSpeak = (text: string) => {
     if (langCode) speak(text, langCode);
+  };
+
+  const handlePhrasesNextPage = () => {
+    phrasesNextPage();
+    phrasesListRef.current?.scrollToOffset({ offset: 0, animated: true });
+  };
+
+  const handlePhrasesPrevPage = () => {
+    phrasesPrevPage();
+    phrasesListRef.current?.scrollToOffset({ offset: 0, animated: true });
+  };
+
+  const handleTipsNextPage = () => {
+    tipsNextPage();
+    tipsListRef.current?.scrollToOffset({ offset: 0, animated: true });
+  };
+
+  const handleTipsPrevPage = () => {
+    tipsPrevPage();
+    tipsListRef.current?.scrollToOffset({ offset: 0, animated: true });
   };
 
   const handleNextPage = () => {
@@ -164,6 +199,7 @@ export default function CultureScreen() {
 
       {!isLoading && !activeError && activeCategory === 'phrases' && (
         <FlatList
+          ref={phrasesListRef}
           data={phrases}
           keyExtractor={(item: Phrase) => item.id}
           renderItem={({ item }) => (
@@ -172,13 +208,71 @@ export default function CultureScreen() {
             </View>
           )}
           contentContainerStyle={styles.listContent}
+          ListFooterComponent={
+            phrasesTotalPages > 1 ? (
+              <View style={styles.pagination}>
+                <TouchableOpacity
+                  style={[styles.pageButton, phrasesPage <= 1 && styles.pageButtonDisabled]}
+                  onPress={handlePhrasesPrevPage}
+                  disabled={phrasesPage <= 1}
+                >
+                  <Text style={[styles.pageButtonText, phrasesPage <= 1 && styles.pageButtonTextDisabled]}>Previous</Text>
+                </TouchableOpacity>
+                <Text style={styles.pageInfo}>
+                  {(phrasesPage - 1) * 10 + 1}–{Math.min(phrasesPage * 10, phrasesTotal)} of {phrasesTotal}
+                </Text>
+                <TouchableOpacity
+                  style={[styles.pageButton, phrasesPage >= phrasesTotalPages && styles.pageButtonDisabled]}
+                  onPress={handlePhrasesNextPage}
+                  disabled={phrasesPage >= phrasesTotalPages}
+                >
+                  <Text style={[styles.pageButtonText, phrasesPage >= phrasesTotalPages && styles.pageButtonTextDisabled]}>Next</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null
+          }
         />
       )}
 
       {!isLoading && !activeError && activeCategory === 'tips' && (
-        <View style={styles.tipsContainer}>
-          <TipCard tips={tips} />
-        </View>
+        <FlatList
+          ref={tipsListRef}
+          data={tips}
+          keyExtractor={(item: CulturalTip) => item.id}
+          renderItem={({ item }) => (
+            <View style={styles.tipCardWrapper}>
+              <View style={styles.tipCard}>
+                <Text style={styles.tipCategory}>{item.category.toUpperCase()}</Text>
+                <Text style={styles.tipTitle}>{item.title}</Text>
+                <Text style={styles.tipBody}>{item.body}</Text>
+              </View>
+            </View>
+          )}
+          contentContainerStyle={styles.listContent}
+          ListFooterComponent={
+            tipsTotalPages > 1 ? (
+              <View style={styles.pagination}>
+                <TouchableOpacity
+                  style={[styles.pageButton, tipsPage <= 1 && styles.pageButtonDisabled]}
+                  onPress={handleTipsPrevPage}
+                  disabled={tipsPage <= 1}
+                >
+                  <Text style={[styles.pageButtonText, tipsPage <= 1 && styles.pageButtonTextDisabled]}>Previous</Text>
+                </TouchableOpacity>
+                <Text style={styles.pageInfo}>
+                  {(tipsPage - 1) * 10 + 1}–{Math.min(tipsPage * 10, tipsTotal)} of {tipsTotal}
+                </Text>
+                <TouchableOpacity
+                  style={[styles.pageButton, tipsPage >= tipsTotalPages && styles.pageButtonDisabled]}
+                  onPress={handleTipsNextPage}
+                  disabled={tipsPage >= tipsTotalPages}
+                >
+                  <Text style={[styles.pageButtonText, tipsPage >= tipsTotalPages && styles.pageButtonTextDisabled]}>Next</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null
+          }
+        />
       )}
 
       {!isLoading && !activeError && CULTURE_API_CATEGORIES.has(activeCategory) && (
@@ -326,9 +420,35 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     marginBottom: spacing.md,
   },
-  tipsContainer: {
-    flex: 1,
-    paddingTop: spacing.md,
+  tipCardWrapper: {
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  tipCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.secondary,
+  },
+  tipCategory: {
+    fontSize: 11,
+    letterSpacing: 1,
+    fontWeight: '700',
+    color: colors.secondary,
+    textTransform: 'uppercase',
+    marginBottom: spacing.xs,
+  },
+  tipTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+  },
+  tipBody: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    lineHeight: 22,
   },
   pagination: {
     flexDirection: 'row',
