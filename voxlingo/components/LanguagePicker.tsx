@@ -90,18 +90,18 @@ const styles = StyleSheet.create({
     borderColor: '#ddd',
     borderRadius: 8,
     backgroundColor: '#f9f9f9',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 18,
   },
   buttonText: {
-    fontSize: 14,
+    fontSize: 18,
     color: '#333',
     flex: 1,
   },
   chevron: {
-    fontSize: 10,
+    fontSize: 14,
     color: '#999',
-    marginLeft: 4,
+    marginLeft: 8,
   },
   overlay: {
     flex: 1,
