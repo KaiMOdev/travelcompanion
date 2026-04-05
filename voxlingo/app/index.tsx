@@ -93,7 +93,7 @@ const styles = StyleSheet.create({
   },
   header: {
     fontSize: 24,
-    fontWeight: '700',
+    fontWeight: 'bold',
     textAlign: 'center',
     paddingVertical: 12,
     color: '#1565c0',

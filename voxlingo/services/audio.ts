@@ -7,6 +7,11 @@ let recording: Audio.Recording | null = null;
 // --- Native (iOS/Android) using expo-av ---
 
 async function startNativeRecording(): Promise<void> {
+  const { status } = await Audio.requestPermissionsAsync();
+  if (status !== 'granted') {
+    throw new Error('Microphone permission is required to record audio');
+  }
+
   await Audio.setAudioModeAsync({
     allowsRecordingIOS: true,
     playsInSilentModeIOS: true,
