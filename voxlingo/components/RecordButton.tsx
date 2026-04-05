@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import {
   View,
-  TouchableOpacity,
+  Pressable,
   Text,
   StyleSheet,
   Animated,
@@ -14,6 +14,8 @@ type Props = {
   onPress: () => void;
 };
 
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
 export function RecordButton({ isRecording, isTranslating, onPress }: Props) {
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const glowAnim = useRef(new Animated.Value(0.3)).current;
@@ -25,12 +27,12 @@ export function RecordButton({ isRecording, isTranslating, onPress }: Props) {
           Animated.timing(pulseAnim, {
             toValue: 1.08,
             duration: 800,
-            useNativeDriver: false,
+            useNativeDriver: true,
           }),
           Animated.timing(pulseAnim, {
             toValue: 1,
             duration: 800,
-            useNativeDriver: false,
+            useNativeDriver: true,
           }),
         ]),
       );
@@ -39,12 +41,12 @@ export function RecordButton({ isRecording, isTranslating, onPress }: Props) {
           Animated.timing(glowAnim, {
             toValue: 0.6,
             duration: 800,
-            useNativeDriver: false,
+            useNativeDriver: true,
           }),
           Animated.timing(glowAnim, {
             toValue: 0.2,
             duration: 800,
-            useNativeDriver: false,
+            useNativeDriver: true,
           }),
         ]),
       );
@@ -61,27 +63,27 @@ export function RecordButton({ isRecording, isTranslating, onPress }: Props) {
     <View style={styles.container}>
       {isRecording && (
         <Animated.View
+          pointerEvents="none"
           style={[
             styles.glowRing,
             { opacity: glowAnim, transform: [{ scale: pulseAnim }] },
           ]}
         />
       )}
-      <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-        <TouchableOpacity
-          style={[
-            styles.button,
-            isRecording && styles.recording,
-            isTranslating && styles.translating,
-          ]}
-          onPress={onPress}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.icon}>
-            {isRecording ? '⏹️' : isTranslating ? '⏳' : '🎙️'}
-          </Text>
-        </TouchableOpacity>
-      </Animated.View>
+      <AnimatedPressable
+        style={[
+          styles.button,
+          isRecording && styles.recording,
+          isTranslating && styles.translating,
+          { transform: [{ scale: pulseAnim }] },
+        ]}
+        onPress={onPress}
+        android_ripple={{ color: 'rgba(255,255,255,0.3)', borderless: true }}
+      >
+        <Text style={styles.icon}>
+          {isRecording ? '⏹️' : isTranslating ? '⏳' : '🎙️'}
+        </Text>
+      </AnimatedPressable>
       <Text style={[styles.hint, isRecording && styles.hintRecording]}>
         {isRecording ? 'Tap to stop' : isTranslating ? 'Translating...' : 'Tap to speak'}
       </Text>

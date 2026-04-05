@@ -26,7 +26,7 @@ export default function CameraScreen() {
   const [result, setResult] = useState<VisionResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cameraReady, setCameraReady] = useState(false);
-  const [flash, setFlash] = useState(false);
+  const [torchEnabled, setTorchEnabled] = useState(false);
   const cameraRef = useRef<CameraView | null>(null);
   const captureId = useRef(0);
 
@@ -197,14 +197,14 @@ export default function CameraScreen() {
         </View>
       </SafeAreaView>
 
-      <CameraView ref={cameraRef} style={styles.camera} facing="back" flash={flash ? 'on' : 'off'} enableTorch={flash} onCameraReady={() => setCameraReady(true)} />
+      <CameraView ref={cameraRef} style={styles.camera} facing="back" flash={torchEnabled ? 'on' : 'off'} enableTorch={torchEnabled} onCameraReady={() => setCameraReady(true)} />
 
       <View style={styles.shutterBar}>
         <TouchableOpacity
           style={styles.flashButton}
-          onPress={() => setFlash(!flash)}
+          onPress={() => setTorchEnabled(!torchEnabled)}
         >
-          <Text style={styles.flashIcon}>{flash ? '⚡' : '🔦'}</Text>
+          <Text style={styles.flashIcon}>{torchEnabled ? '⚡' : '🔦'}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.shutterOuter, !cameraReady && styles.shutterDisabled]}
