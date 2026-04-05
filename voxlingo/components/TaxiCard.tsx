@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { getCurrentLocation, LocationInfo } from '../services/location';
+import { speak } from '../services/speech';
 import { API_URL } from '../services/api';
 import { colors, spacing, radius, typography } from '../constants/theme';
 
@@ -124,8 +125,15 @@ export function TaxiCard({ visible, hotelAddress, targetLang, onClose }: Props) 
             </View>
 
             {hotelAddress && (
-              <View style={styles.addressCard}>
-                <Text style={styles.addressLabel}>Take me to:</Text>
+              <TouchableOpacity
+                style={styles.addressCard}
+                onPress={() => {
+                  const textToSpeak = translatedHotel || hotelAddress;
+                  if (targetLang) speak(textToSpeak, targetLang);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.addressLabel}>Take me to:  🔊</Text>
                 {translatedHotel ? (
                   <>
                     <Text style={styles.addressText}>{translatedHotel}</Text>
@@ -134,7 +142,7 @@ export function TaxiCard({ visible, hotelAddress, targetLang, onClose }: Props) 
                 ) : (
                   <Text style={styles.addressText}>{hotelAddress}</Text>
                 )}
-              </View>
+              </TouchableOpacity>
             )}
 
             <Text style={styles.coordinates}>
