@@ -1,29 +1,52 @@
-import { LanguageCode, VisionTranslationResult } from "../types";
-
-const BACKEND_URL = __DEV__
-  ? "http://localhost:3001"
-  : "https://your-production-server.com";
+import { VisionResponse, SmartVisionResponse } from '../types';
+import { API_URL, apiHeaders } from './api';
 
 export async function translateImage(
-  imageBase64: string,
-  targetLang: LanguageCode
-): Promise<VisionTranslationResult> {
-  const response = await fetch(`${BACKEND_URL}/api/translate/image`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      image: imageBase64,
-      targetLang,
-    }),
-  });
+  image: string,
+  targetLang: string,
+): Promise<VisionResponse> {
+  let response: Response;
+
+  try {
+    response = await fetch(`${API_URL}/vision`, {
+      method: 'POST',
+      headers: apiHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ image, targetLang }),
+    });
+  } catch {
+    throw new Error('Could not connect to translation server');
+  }
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(
-      errorData.error || `Translation failed with status ${response.status}`
-    );
+    let message = 'Image translation failed';
+    try { message = (await response.json()).error || message; } catch { /* non-JSON response */ }
+    throw new Error(message);
+  }
+
+  return response.json();
+}
+
+export async function translateImageSmart(
+  image: string,
+  targetLang: string,
+  dietaryPreferences?: string[],
+): Promise<SmartVisionResponse> {
+  let response: Response;
+
+  try {
+    response = await fetch(`${API_URL}/vision`, {
+      method: 'POST',
+      headers: apiHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ image, targetLang, dietaryPreferences }),
+    });
+  } catch {
+    throw new Error('Could not connect to translation server');
+  }
+
+  if (!response.ok) {
+    let message = 'Smart vision translation failed';
+    try { message = (await response.json()).error || message; } catch { /* non-JSON response */ }
+    throw new Error(message);
   }
 
   return response.json();

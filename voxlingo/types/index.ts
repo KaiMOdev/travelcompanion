@@ -1,70 +1,60 @@
-export type LanguageCode =
-  | "en" | "es" | "zh" | "hi" | "ja" | "ko"
-  | "th" | "vi" | "id" | "tl" | "pt" | "it"
-  | "ru" | "tr" | "pl" | "nl" | "ar";
-
-export type TranslationMode = "travel" | "camera" | "meeting";
-
-export interface Translation {
+export type Translation = {
   id: string;
-  sourceLang: LanguageCode;
-  targetLang: LanguageCode;
   originalText: string;
   translatedText: string;
-  mode: TranslationMode;
+  sourceLang: string;
+  targetLang: string;
   timestamp: number;
-  cached: boolean;
-}
+};
 
-export interface TranscriptEntry {
-  speaker: string;
-  lang: LanguageCode;
-  original: string;
-  translated: string;
-  timestamp: number;
-}
+export type TranslateRequest = {
+  audio: string;
+  sourceLang: string;
+  targetLang: string;
+};
 
-export interface Transcript {
-  id: string;
-  title: string;
-  date: number;
-  duration: number;
-  speakers: string[];
-  entries: TranscriptEntry[];
-  exportedAs: "txt" | "pdf" | null;
-}
+export type TranslateResponse = {
+  originalText: string;
+  translatedText: string;
+};
 
-export interface WordListItem {
-  id: string;
-  word: string;
-  translation: string;
-  sourceLang: LanguageCode;
-  targetLang: LanguageCode;
-  savedAt: number;
-}
+export type TranslateErrorResponse = {
+  error: string;
+};
 
-export interface UserProfile {
-  displayName: string;
-  email: string;
-  preferredLanguages: LanguageCode[];
-  createdAt: number;
-}
+export type Language = {
+  code: string;
+  name: string;
+};
 
-export interface UserSettings {
-  defaultSourceLang: LanguageCode;
-  defaultTargetLang: LanguageCode;
-  autoDetect: boolean;
-}
+export type VisionRequest = {
+  image: string;
+  targetLang: string;
+};
 
-export interface VisionTranslationResult {
+export type VisionResponse = {
   detectedLanguage: string;
   originalText: string;
   translatedText: string;
-}
+};
 
-export interface MeetingUtterance {
-  speaker: string;
-  lang: string;
-  original: string;
-  translated: string;
-}
+export type {
+  Destination,
+  Phrase,
+  CulturalTip,
+  CultureCategory,
+  CultureEntry,
+  MenuItem,
+  MenuTranslation,
+  SignTranslation,
+  GeneralTranslation,
+  SmartVisionResponse,
+  EmergencyInfo,
+} from './travel';
+
+export type {
+  ExplorePlace,
+  PlacePhrase,
+  ExploreCategory,
+  ExploreCategoryId,
+} from './explore';

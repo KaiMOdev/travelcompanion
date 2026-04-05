@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -5,159 +6,181 @@ import {
   Modal,
   FlatList,
   StyleSheet,
-} from "react-native";
-import { useState } from "react";
-import { LanguageCode } from "../types";
-import { SUPPORTED_LANGUAGES, Language } from "../constants/languages";
+} from 'react-native';
+import { LANGUAGES } from '../constants/languages';
+import { getLanguageName } from '../constants/languages';
+import { colors, shadow, spacing, radius } from '../constants/theme';
 
-interface LanguagePickerProps {
-  selectedLang: LanguageCode;
-  onSelect: (lang: LanguageCode) => void;
-  label?: string;
-}
+type Props = {
+  selectedCode: string;
+  onSelect: (code: string) => void;
+  label: string;
+};
 
-export function LanguagePicker({
-  selectedLang,
-  onSelect,
-  label,
-}: LanguagePickerProps) {
-  const [modalVisible, setModalVisible] = useState(false);
-
-  const selectedLanguage = SUPPORTED_LANGUAGES.find(
-    (l) => l.code === selectedLang
-  );
-
-  const handleSelect = (lang: Language) => {
-    onSelect(lang.code);
-    setModalVisible(false);
-  };
+export function LanguagePicker({ selectedCode, onSelect, label }: Props) {
+  const [open, setOpen] = useState(false);
 
   return (
-    <View>
-      {label && <Text style={styles.label}>{label}</Text>}
+    <View style={styles.container}>
+      {label ? <Text style={styles.label}>{label}</Text> : null}
       <TouchableOpacity
         style={styles.button}
-        onPress={() => setModalVisible(true)}
+        onPress={() => setOpen(true)}
+        activeOpacity={0.7}
       >
-        <Text style={styles.buttonText}>
-          {selectedLanguage?.nativeName || selectedLang}
+        <Text style={styles.buttonText} numberOfLines={1}>
+          {getLanguageName(selectedCode)}
         </Text>
-        <Text style={styles.arrow}>▼</Text>
+        <View style={styles.chevronCircle}>
+          <Text style={styles.chevron}>▾</Text>
+        </View>
       </TouchableOpacity>
 
-      <Modal
-        visible={modalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Language</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Text style={styles.closeButton}>✕</Text>
-              </TouchableOpacity>
-            </View>
+      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+        <TouchableOpacity
+          style={styles.overlay}
+          activeOpacity={1}
+          onPress={() => setOpen(false)}
+        >
+          <View style={styles.modal}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>
+              {label || 'Select Language'}
+            </Text>
             <FlatList
-              data={SUPPORTED_LANGUAGES}
+              data={LANGUAGES}
               keyExtractor={(item) => item.code}
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={[
-                    styles.languageItem,
-                    item.code === selectedLang && styles.selectedItem,
+                    styles.option,
+                    item.code === selectedCode && styles.optionSelected,
                   ]}
-                  onPress={() => handleSelect(item)}
+                  onPress={() => {
+                    onSelect(item.code);
+                    setOpen(false);
+                  }}
                 >
-                  <Text style={styles.languageName}>{item.name}</Text>
-                  <Text style={styles.nativeName}>{item.nativeName}</Text>
+                  <Text
+                    style={[
+                      styles.optionText,
+                      item.code === selectedCode && styles.optionTextSelected,
+                    ]}
+                  >
+                    {item.name}
+                  </Text>
+                  {item.code === selectedCode && (
+                    <View style={styles.checkCircle}>
+                      <Text style={styles.checkmark}>✓</Text>
+                    </View>
+                  )}
                 </TouchableOpacity>
               )}
             />
           </View>
-        </View>
+        </TouchableOpacity>
       </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
   label: {
-    fontSize: 12,
-    color: "#6b7280",
-    marginBottom: 4,
-    textTransform: "uppercase",
-    fontWeight: "600",
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: colors.textMuted,
+    marginBottom: spacing.xs,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   button: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: "#f3f4f6",
-    borderRadius: 12,
-    minWidth: 130,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: 14,
   },
   buttonText: {
     fontSize: 16,
-    fontWeight: "600",
-    color: "#1f2937",
-  },
-  arrow: {
-    fontSize: 12,
-    color: "#6b7280",
-    marginLeft: 8,
-  },
-  modalOverlay: {
+    fontWeight: '600',
+    color: colors.textPrimary,
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "flex-end",
   },
-  modalContent: {
-    backgroundColor: "#ffffff",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: "70%",
-    paddingBottom: 34,
+  chevronCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: spacing.sm,
   },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#e5e7eb",
+  chevron: {
+    fontSize: 12,
+    color: colors.textOnPrimary,
+  },
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(10, 22, 40, 0.6)',
+    justifyContent: 'flex-end',
+  },
+  modal: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    maxHeight: '75%',
+    paddingBottom: spacing.xxl,
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.border,
+    alignSelf: 'center',
+    marginTop: spacing.md,
+    marginBottom: spacing.lg,
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#1f2937",
-  },
-  closeButton: {
     fontSize: 20,
-    color: "#6b7280",
-    padding: 4,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+    paddingHorizontal: spacing.xxl,
+    marginBottom: spacing.lg,
   },
-  languageItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f3f4f6",
+  option: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.xxl,
+    paddingVertical: 15,
   },
-  selectedItem: {
-    backgroundColor: "#eef2ff",
+  optionSelected: {
+    backgroundColor: colors.primaryGlow,
   },
-  languageName: {
+  optionText: {
     fontSize: 16,
-    color: "#1f2937",
+    color: colors.textPrimary,
+    flex: 1,
   },
-  nativeName: {
+  optionTextSelected: {
+    color: colors.primary,
+    fontWeight: 'bold',
+  },
+  checkCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkmark: {
     fontSize: 14,
-    color: "#6b7280",
+    color: colors.textOnPrimary,
+    fontWeight: 'bold',
   },
 });

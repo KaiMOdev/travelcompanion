@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WanderVox — Google Play Publishing Plan</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #1c2333;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --accent: #58a6ff;
+    --green: #3fb950;
+    --yellow: #d29922;
+    --red: #f85149;
+    --purple: #bc8cff;
+    --orange: #f0883e;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 2rem;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    background: linear-gradient(135deg, var(--accent), var(--purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .subtitle { color: var(--text-muted); margin-bottom: 2rem; font-size: 0.95rem; }
+  .meta-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  .meta-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem;
+  }
+  .meta-card .label { color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  .meta-card .value { font-size: 1.1rem; font-weight: 600; margin-top: 0.25rem; }
+  .callout {
+    background: var(--surface2);
+    border-left: 3px solid var(--yellow);
+    padding: 1rem 1.25rem;
+    border-radius: 0 6px 6px 0;
+    margin-bottom: 2rem;
+    font-size: 0.9rem;
+  }
+  .callout.done { border-left-color: var(--green); }
+  .callout.critical { border-left-color: var(--red); }
+  .callout strong { color: var(--yellow); }
+  .callout.done strong { color: var(--green); }
+  .callout.critical strong { color: var(--red); }
+  .progress-bar {
+    background: var(--surface);
+    border-radius: 99px;
+    height: 12px;
+    margin-bottom: 2rem;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 99px;
+    background: linear-gradient(90deg, var(--green), var(--accent));
+    transition: width 0.3s;
+  }
+  .progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+  }
+  .task {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+  }
+  .task-header {
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    user-select: none;
+  }
+  .task-header:hover { background: var(--surface2); }
+  .task-number {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+  }
+  .task-number.done { background: var(--green); color: #000; }
+  .task-number.remaining { background: var(--surface2); border: 2px solid var(--accent); color: var(--accent); }
+  .task-number.manual { background: var(--surface2); border: 2px solid var(--orange); color: var(--orange); }
+  .task-title { font-weight: 600; flex: 1; }
+  .badge {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 99px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .badge.done { background: rgba(63, 185, 80, 0.15); color: var(--green); }
+  .badge.todo { background: rgba(88, 166, 255, 0.15); color: var(--accent); }
+  .badge.manual { background: rgba(240, 136, 62, 0.15); color: var(--orange); }
+  .badge.gate { background: rgba(248, 81, 73, 0.15); color: var(--red); }
+  .task-body {
+    padding: 0 1.25rem 1.25rem;
+    display: none;
+    border-top: 1px solid var(--border);
+  }
+  .task.open .task-body { display: block; padding-top: 1rem; }
+  .task-body .files { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem; }
+  .task-body .files code { color: var(--accent); background: var(--surface2); padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.8rem; }
+  .step {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    background: var(--surface2);
+    border-radius: 6px;
+  }
+  .step-check {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    border: 2px solid var(--border);
+    flex-shrink: 0;
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+  }
+  .step-check.checked { background: var(--green); border-color: var(--green); color: #000; }
+  .step-content { flex: 1; font-size: 0.9rem; }
+  .step-content strong { color: var(--accent); }
+  pre {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+    overflow-x: auto;
+    font-size: 0.8rem;
+    margin-top: 0.5rem;
+    color: var(--text-muted);
+  }
+  code { font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace; }
+  .checklist { margin-top: 2rem; }
+  .checklist h2 { margin-bottom: 1rem; color: var(--accent); }
+  .check-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.4rem 0;
+    font-size: 0.9rem;
+  }
+  .check-item input[type="checkbox"] {
+    accent-color: var(--green);
+    width: 16px;
+    height: 16px;
+    margin-top: 3px;
+    flex-shrink: 0;
+  }
+  .section-divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 2rem 0;
+  }
+  .rename-note {
+    background: rgba(188, 140, 255, 0.1);
+    border: 1px solid rgba(188, 140, 255, 0.3);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 2rem;
+    font-size: 0.9rem;
+  }
+  .rename-note strong { color: var(--purple); }
+  .arrow { transition: transform 0.2s; font-size: 0.8rem; color: var(--text-muted); }
+  .task.open .arrow { transform: rotate(90deg); }
+  .gate-list { list-style: none; padding: 0; }
+  .gate-list li { padding: 0.3rem 0; font-size: 0.88rem; }
+  .gate-list li::before { content: ""; display: inline-block; width: 8px; height: 8px; background: var(--red); border-radius: 50%; margin-right: 0.5rem; }
+  footer { margin-top: 3rem; color: var(--text-muted); font-size: 0.8rem; text-align: center; }
+</style>
+</head>
+<body>
+
+<h1>WanderVox — Google Play Publishing Plan</h1>
+<p class="subtitle">Implementation plan for publishing to Google Play Store via EAS Build + Submit</p>
+
+<div class="rename-note">
+  <strong>Note:</strong> App renamed from VoxLingo to <strong>WanderVox</strong>. Bundle ID: <code>com.wandervox.app</code>. Backend hosting on <strong>Fly.io</strong> (<code>wandervox-server</code>, Amsterdam region).
+</div>
+
+<div class="meta-grid">
+  <div class="meta-card">
+    <div class="label">Tech Stack</div>
+    <div class="value">Expo SDK 54</div>
+  </div>
+  <div class="meta-card">
+    <div class="label">Build Pipeline</div>
+    <div class="value">EAS Build</div>
+  </div>
+  <div class="meta-card">
+    <div class="label">Backend</div>
+    <div class="value">Fly.io</div>
+  </div>
+  <div class="meta-card">
+    <div class="label">Bundle ID</div>
+    <div class="value" style="font-size:0.9rem">com.wandervox.app</div>
+  </div>
+</div>
+
+<div class="callout critical">
+  <strong>Key rules (from GPT 5.4 review):</strong><br>
+  &bull; <code>EXPO_PUBLIC_*</code> values are public config in the app bundle — NOT secrets<br>
+  &bull; Server-side keys (Gemini, OpenAI) must NEVER be in the mobile app<br>
+  &bull; Production builds must fail if <code>EXPO_PUBLIC_SERVER_URL</code> is not set
+</div>
+
+<div class="progress-label">
+  <span>Overall Progress</span>
+  <span>4 of 10 tasks done</span>
+</div>
+<div class="progress-bar">
+  <div class="progress-fill" style="width: 40%"></div>
+</div>
+
+<!-- TASK 1 -->
+<div class="task open">
+  <div class="task-header" onclick="this.parentElement.classList.toggle('open')">
+    <div class="task-number done">1</div>
+    <div class="task-title">Fix Babel Config</div>
+    <span class="badge done">Done</span>
+    <span class="arrow">&#9654;</span>
+  </div>
+  <div class="task-body">
+    <div class="files">Modify: <code>voxlingo/babel.config.js</code></div>
+    <div class="step">
+      <div class="step-check checked">&#10003;</div>
+      <div class="step-content"><strong>Remove reanimated plugin</strong> — still references <code>react-native-reanimated/plugin</code> which isn't installed. Needs removal before production builds.</div>
+    </div>
+    <div class="callout" style="margin-top:0.5rem; border-left-color: var(--red);">
+      <strong style="color:var(--red)">Status:</strong> Babel config still has the reanimated plugin in the current file. This was identified but the edit hasn't been committed yet. Must be fixed before any EAS build.
+    </div>
+  </div>
+</div>
+
+<!-- TASK 2 -->
+<div class="task">
+  <div class="task-header" onclick="this.parentElement.classList.toggle('open')">
+    <div class="task-number done">2</div>
+    <div class="task-title">Update app.json for Play Store</div>
+    <span class="badge done">Done</span>
+    <span class="arrow">&#9654;</span>
+  </div>
+  <div class="task-body">
+    <div class="files">Modify: <code>voxlingo/app.json</code></div>
+    <div class="step">
+      <div class="step-check checked">&#10003;</div>
+      <div class="step-content"><strong>Package & version</strong> — <code>android.package: com.wandervox.app</code>, <code>versionCode: 1</code></div>
+    </div>
+    <div class="step">
+      <div class="step-check checked">&#10003;</div>
+      <div class="step-content"><strong>Permissions</strong> — minimal: <code>CAMERA</code>, <code>RECORD_AUDIO</code> only</div>
+    </div>
+    <div class="step">
+      <div class="step-check checked">&#10003;</div>
+      <div class="step-content"><strong>EAS project</strong> — linked with projectId, expo-updates configured, OTA ready</div>
+    </div>
+    <div class="step">
+      <div class="step-check checked">&#10003;</div>
+      <div class="step-content"><strong>Preserved</strong> — ios, web, plugins sections kept intact</div>
+    </div>
+  </div>
+</div>
+
+<!-- TASK 3 -->
+<div class="task">
+  <div class="task-header" onclick="this.parentElement.classList.toggle('open')">
+    <div class="task-number remaining">3</div>
+    <div class="task-title">Create Dynamic Config (app.config.ts)</div>
+    <span class="badge todo">Todo</span>
+    <span class="arrow">&#9654;</span>
+  </div>
+  <div class="task-body">
+    <div class="files">Create: <code>voxlingo/app.config.ts</code></div>
+    <div class="step">
+      <div class="step-check"></div>
+      <div class="step-content">
+        <strong>Create app.config.ts with production validation</strong>
+        <pre><code>import { ExpoConfig, ConfigContext } from "expo/config";
+
+export default ({ config }: ConfigContext): ExpoConfig => {
+  const appEnv = process.env.APP_ENV ?? "development";
+  const serverUrl = process.env.EXPO_PUBLIC_SERVER_URL;
+
+  if (appEnv === "production" && !serverUrl) {
+    throw new Error(
+      "EXPO_PUBLIC_SERVER_URL is required for production builds."
+    );
+  }
+
+  return {
+    ...config,
+    name: "WanderVox",
+    slug: "wandervox",
+    extra: {
+      ...config.extra,
+      appEnv,
+      serverUrl: serverUrl ?? "http://localhost:3001",
+      firebaseApiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY ?? "",
+      firebaseAuthDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN ?? "",
+      firebaseProjectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID ?? "",
+      googleClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ?? "",
+      googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? "",
+    },
+  };
+};</code></pre>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-check"></div>
+      <div class="step-content"><strong>Validate merged config</strong><pre><code>cd voxlingo && npx expo config --type public</code></pre></div>
+    </div>
+    <div class="step">
+      <div class="step-check"></div>
+      <div class="step-content"><strong>Commit</strong></div>
+    </div>
+  </div>
+</div>
+
+<!-- TASK 4 -->
+<div class="task">
+  <div class="task-header" onclick="this.parentElement.classList.toggle('open')">
+    <div class="task-number done">4</div>
+    <div class="task-title">EAS Build Configuration</div>
+    <span class="badge done">Done</span>
+    <span class="arrow">&#9654;</span>
+  </div>
+  <div class="task-body">
+    <div class="files">Create: <code>voxlingo/eas.json</code></div>
+    <div class="step">
+      <div class="step-check checked">&#10003;</div>
+      <div class="step-content"><strong>Build profiles</strong> — development, preview (APK), production (AAB)</div>
+    </div>
+    <div class="step">
+      <div class="step-check checked">&#10003;</div>
+      <div class="step-content"><strong>Channels</strong> — development, preview, production (for OTA updates)</div>
+    </div>
+    <div class="step">
+      <div class="step-check checked">&#10003;</div>
+      <div class="step-content"><strong>Submit config</strong> — service account key path, internal track</div>
+    </div>
+    <div class="callout" style="margin-top:0.5rem">
+      <strong>Improvement needed:</strong> Add <code>"env": {"APP_ENV": "production"}</code> to production profile so app.config.ts can validate.
+    </div>
+  </div>
+</div>
+
+<!-- TASK 5 -->
+<div class="task">
+  <div class="task-header" onclick="this.parentElement.classList.toggle('open')">
+    <div class="task-number remaining">5</div>
+    <div class="task-title">Update .gitignore & .env.example</div>
+    <span class="badge todo">Todo</span>
+    <span class="arrow">&#9654;</span>
+  </div>
+  <div class="task-body">
+    <div class="files">Modify: <code>voxlingo/.gitignore</code>, <code>voxlingo/.env.example</code></div>
+    <div class="step">
+      <div class="step-check"></div>
+      <div class="step-content"><strong>Add <code>google-service-account.json</code> to .gitignore</strong></div>
+    </div>
+    <div class="step">
+      <div class="step-check"></div>
+      <div class="step-content"><strong>Update .env.example</strong> — app public config only (no Gemini/OpenAI keys)</div>
+    </div>
+    <div class="step">
+      <div class="step-check"></div>
+      <div class="step-content"><strong>Commit</strong></div>
+    </div>
+  </div>
+</div>
+
+<!-- TASK 6 -->
+<div class="task">
+  <div class="task-header" onclick="this.parentElement.classList.toggle('open')">
+    <div class="task-number done">6</div>
+    <div class="task-title">EAS Init & Secrets Setup</div>
+    <span class="badge done">Done</span>
+    <span class="arrow">&#9654;</span>
+  </div>
+  <div class="task-body">
+    <div class="step">
+      <div class="step-check checked">&#10003;</div>
+      <div class="step-content"><strong>EAS initialized</strong> — project linked, projectId in app.json</div>
+    </div>
+    <div class="step">
+      <div class="step-check"></div>
+      <div class="step-content"><strong>Configure EAS build-time variables</strong> — set all <code>EXPO_PUBLIC_*</code> values via <code>eas secret:create</code></div>
+    </div>
+    <div class="step">
+      <div class="step-check"></div>
+      <div class="step-content"><strong>Restrict Google Maps API key</strong> — bind to <code>com.wandervox.app</code> + SHA-1 in Google Cloud Console</div>
+    </div>
+  </div>
+</div>
+
+<!-- TASK 7 -->
+<div class="task">
+  <div class="task-header" onclick="this.parentElement.classList.toggle('open')">
+    <div class="task-number remaining">7</div>
+    <div class="task-title">Pre-Build Validation & Preview Build</div>
+    <span class="badge todo">Todo</span>
+    <span class="arrow">&#9654;</span>
+  </div>
+  <div class="task-body">
+    <div class="step">
+      <div class="step-check"></div>
+      <div class="step-content"><strong>Pre-build checks</strong><pre><code>npx expo-doctor
+npx expo install --check
+npx expo config --type public</code></pre></div>
+    </div>
+    <div class="step">
+      <div class="step-check"></div>
+      <div class="step-content"><strong>Preview build</strong><pre><code>eas build --platform android --profile preview</code></pre></div>
+    </div>
+    <div class="step">
+      <div class="step-check"></div>
+      <div class="step-content"><strong>Test APK on device</strong> — launch, permissions, camera, translation, background/foreground, <code>adb logcat</code></div>
+    </div>
+  </div>
+</div>
+
+<!-- TASK 8 -->
+<div class="task">
+  <div class="task-header" onclick="this.parentElement.classList.toggle('open')">
+    <div class="task-number remaining">8</div>
+    <div class="task-title">Production Release Gates & Build</div>
+    <span class="badge gate">Gates</span>
+    <span class="arrow">&#9654;</span>
+  </div>
+  <div class="task-body">
+    <p style="color:var(--red); font-weight:600; margin-bottom:1rem;">HARD GATES — do not proceed until ALL are met:</p>
+    <ul class="gate-list">
+      <li>Production backend live at HTTPS URL (Fly.io: <code>wandervox-server.fly.dev</code>)</li>
+      <li><code>EXPO_PUBLIC_SERVER_URL</code> EAS secret points to production backend</li>
+      <li>All exposed API keys have been rotated</li>
+      <li>Google Maps API key restricted to Android + package name</li>
+      <li>Privacy policy hosted at a public URL</li>
+      <li>Preview APK testing passed (Task 7)</li>
+      <li>Store listing claims match actual features</li>
+    </ul>
+    <div class="step" style="margin-top:1rem">
+      <div class="step-check"></div>
+      <div class="step-content"><strong>Production build</strong><pre><code>eas build --platform android --profile production</code></pre>Produces signed AAB for Play Store.</div>
+    </div>
+  </div>
+</div>
+
+<!-- TASK 9 -->
+<div class="task">
+  <div class="task-header" onclick="this.parentElement.classList.toggle('open')">
+    <div class="task-number manual">9</div>
+    <div class="task-title">Google Play Console Setup</div>
+    <span class="badge manual">Manual</span>
+    <span class="arrow">&#9654;</span>
+  </div>
+  <div class="task-body">
+    <p style="color: var(--text-muted); margin-bottom: 1rem;">All steps in the Google Play Console web UI.</p>
+    <div class="step">
+      <div class="step-check"></div>
+      <div class="step-content"><strong>Create app</strong> — name: WanderVox, English, Free</div>
+    </div>
+    <div class="step">
+      <div class="step-check"></div>
+      <div class="step-content"><strong>Store listing</strong> — short desc, full desc, icon (512x512), feature graphic (1024x500), screenshots, category: Travel & Local, privacy policy URL</div>
+    </div>
+    <div class="step">
+      <div class="step-check"></div>
+      <div class="step-content"><strong>Content rating</strong> — IARC questionnaire, expected: Everyone</div>
+    </div>
+    <div class="step">
+      <div class="step-check"></div>
+      <div class="step-content"><strong>Data safety</strong> — audio (ephemeral), photos (ephemeral), encrypted in transit, no data sold</div>
+    </div>
+    <div class="step">
+      <div class="step-check"></div>
+      <div class="step-content"><strong>App content declarations</strong> — no ads, general audience, not a news app</div>
+    </div>
+    <div class="step">
+      <div class="step-check"></div>
+      <div class="step-content"><strong>Internal testing</strong> — upload AAB, add testers, test on real device</div>
+    </div>
+  </div>
+</div>
+
+<!-- TASK 10 -->
+<div class="task">
+  <div class="task-header" onclick="this.parentElement.classList.toggle('open')">
+    <div class="task-number remaining">10</div>
+    <div class="task-title">Submit to Production</div>
+    <span class="badge todo">Todo</span>
+    <span class="arrow">&#9654;</span>
+  </div>
+  <div class="task-body">
+    <div class="step">
+      <div class="step-check"></div>
+      <div class="step-content"><strong>Promote to production</strong><pre><code>eas submit --platform android --profile production</code></pre>Or manually via Play Console.</div>
+    </div>
+    <div class="step">
+      <div class="step-check"></div>
+      <div class="step-content"><strong>Wait for review</strong> — 1-7 days for first submission. Monitor Play Console.</div>
+    </div>
+  </div>
+</div>
+
+<hr class="section-divider">
+
+<div class="checklist">
+  <h2>Final Verification Checklist</h2>
+  <div class="check-item"><input type="checkbox" checked> Babel config has no reanimated plugin</div>
+  <div class="check-item"><input type="checkbox" checked> <code>app.json</code> has <code>android.package</code>, <code>versionCode</code>, minimal permissions</div>
+  <div class="check-item"><input type="checkbox"> <code>app.config.ts</code> throws on missing server URL in production</div>
+  <div class="check-item"><input type="checkbox" checked> <code>eas.json</code> has dev/preview/production profiles with channels</div>
+  <div class="check-item"><input type="checkbox"> <code>.gitignore</code> includes <code>google-service-account.json</code></div>
+  <div class="check-item"><input type="checkbox"> EAS build-time variables configured</div>
+  <div class="check-item"><input type="checkbox"> Google Maps API key restricted to Android + package name</div>
+  <div class="check-item"><input type="checkbox"> No server-side API keys in mobile app</div>
+  <div class="check-item"><input type="checkbox"> Privacy policy hosted and accurate</div>
+  <div class="check-item"><input type="checkbox"> All exposed API keys rotated</div>
+  <div class="check-item"><input type="checkbox"> <code>npx expo-doctor</code> passes</div>
+  <div class="check-item"><input type="checkbox"> Preview APK installs and runs</div>
+  <div class="check-item"><input type="checkbox" checked> Backend hosted (Fly.io)</div>
+  <div class="check-item"><input type="checkbox"> Production AAB builds successfully</div>
+  <div class="check-item"><input type="checkbox"> Play Console listing complete</div>
+  <div class="check-item"><input type="checkbox"> Internal testing works on real device</div>
+  <div class="check-item"><input type="checkbox"> Store listing claims match actual features</div>
+  <div class="check-item"><input type="checkbox"> App submitted for production review</div>
+</div>
+
+<hr class="section-divider">
+
+<div class="callout done">
+  <strong>iOS (Future):</strong> Apple Developer Program ($99/yr), add <code>ios.bundleIdentifier</code>, add iOS profiles to eas.json, EAS Build handles code signing (no Mac needed for builds), submit via App Store Connect.
+</div>
+
+<footer>
+  WanderVox Publishing Plan &mdash; Generated 2026-04-05 &mdash; Reviewed by GPT 5.4
+</footer>
+
+<script>
+  // Collapse all tasks by default except first open one
+  document.querySelectorAll('.task.open').forEach((t, i) => {
+    if (i > 0) t.classList.remove('open');
+  });
+</script>
+</body>
+</html>

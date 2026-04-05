@@ -1,0 +1,77 @@
+<h2>VoxLingo — System Architecture</h2>
+<p class="subtitle">High-level overview of how all the pieces connect</p>
+
+<div class="mockup" style="margin-bottom: 24px;">
+  <div class="mockup-header">Architecture Diagram</div>
+  <div class="mockup-body" style="padding: 24px; font-family: monospace; font-size: 13px; line-height: 1.8;">
+    <div style="display: flex; gap: 32px; align-items: flex-start; justify-content: center; flex-wrap: wrap;">
+
+      <!-- Mobile App -->
+      <div style="border: 2px solid #6366f1; border-radius: 12px; padding: 16px; min-width: 200px; text-align: center;">
+        <div style="font-weight: bold; color: #6366f1; font-size: 15px; margin-bottom: 12px;">📱 Expo App (RN)</div>
+        <div style="background: #eef2ff; border-radius: 8px; padding: 8px; margin: 4px 0; font-size: 12px;">Travel Tab — Voice Translation</div>
+        <div style="background: #eef2ff; border-radius: 8px; padding: 8px; margin: 4px 0; font-size: 12px;">Camera Tab — OCR Translation</div>
+        <div style="background: #eef2ff; border-radius: 8px; padding: 8px; margin: 4px 0; font-size: 12px;">Meeting Tab — Live Subtitles</div>
+        <div style="background: #fef3c7; border-radius: 8px; padding: 8px; margin: 8px 0 0; font-size: 12px;">expo-av · expo-camera · socket.io</div>
+      </div>
+
+      <!-- Arrows -->
+      <div style="display: flex; flex-direction: column; justify-content: center; min-height: 200px; font-size: 20px;">
+        <div>⟵ WebSocket ⟶</div>
+        <div style="font-size: 11px; color: #666; text-align: center;">Audio stream<br/>+ translations</div>
+      </div>
+
+      <!-- Backend -->
+      <div style="border: 2px solid #10b981; border-radius: 12px; padding: 16px; min-width: 200px; text-align: center;">
+        <div style="font-weight: bold; color: #10b981; font-size: 15px; margin-bottom: 12px;">🖥️ Node.js Backend</div>
+        <div style="background: #ecfdf5; border-radius: 8px; padding: 8px; margin: 4px 0; font-size: 12px;">Express + socket.io server</div>
+        <div style="background: #ecfdf5; border-radius: 8px; padding: 8px; margin: 4px 0; font-size: 12px;">Gemini Proxy (hides API key)</div>
+        <div style="background: #ecfdf5; border-radius: 8px; padding: 8px; margin: 4px 0; font-size: 12px;">Rate Limiter (15 RPM free)</div>
+        <div style="background: #fef3c7; border-radius: 8px; padding: 8px; margin: 8px 0 0; font-size: 12px;">express · helmet · cors · dotenv</div>
+      </div>
+
+      <!-- Arrows -->
+      <div style="display: flex; flex-direction: column; justify-content: center; min-height: 200px; font-size: 20px;">
+        <div>⟶ API ⟶</div>
+      </div>
+
+      <!-- External Services -->
+      <div style="border: 2px solid #f59e0b; border-radius: 12px; padding: 16px; min-width: 200px; text-align: center;">
+        <div style="font-weight: bold; color: #f59e0b; font-size: 15px; margin-bottom: 12px;">☁️ Google Cloud</div>
+        <div style="background: #fffbeb; border-radius: 8px; padding: 8px; margin: 4px 0; font-size: 12px;">Gemini Live API (voice→voice)</div>
+        <div style="background: #fffbeb; border-radius: 8px; padding: 8px; margin: 4px 0; font-size: 12px;">Gemini Vision API (image→text)</div>
+        <div style="background: #fffbeb; border-radius: 8px; padding: 8px; margin: 4px 0; font-size: 12px;">Maps Grounding (location)</div>
+      </div>
+    </div>
+
+    <!-- Firebase row -->
+    <div style="margin-top: 24px; display: flex; justify-content: center;">
+      <div style="border: 2px solid #ef4444; border-radius: 12px; padding: 16px; min-width: 300px; text-align: center;">
+        <div style="font-weight: bold; color: #ef4444; font-size: 15px; margin-bottom: 12px;">🔥 Firebase</div>
+        <div style="display: flex; gap: 12px; justify-content: center;">
+          <div style="background: #fef2f2; border-radius: 8px; padding: 8px; font-size: 12px;">Auth (Google + Apple)</div>
+          <div style="background: #fef2f2; border-radius: 8px; padding: 8px; font-size: 12px;">Firestore (history + cache)</div>
+          <div style="background: #fef2f2; border-radius: 8px; padding: 8px; font-size: 12px;">Offline Persistence</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h3>Data Flow — Voice Translation (Travel Mode)</h3>
+<div class="mockup">
+  <div class="mockup-header">Request Lifecycle</div>
+  <div class="mockup-body" style="padding: 16px; font-size: 13px; font-family: monospace;">
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <div style="background: #eef2ff; padding: 8px 12px; border-radius: 6px;">1️⃣ User taps mic → expo-av records 16-bit PCM, 16kHz mono</div>
+      <div style="color: #999; text-align: center;">↓ WebSocket (socket.io)</div>
+      <div style="background: #ecfdf5; padding: 8px 12px; border-radius: 6px;">2️⃣ Backend receives audio chunks → forwards to Gemini Live API</div>
+      <div style="color: #999; text-align: center;">↓ WebSocket</div>
+      <div style="background: #fffbeb; padding: 8px 12px; border-radius: 6px;">3️⃣ Gemini translates speech → returns translated audio + text</div>
+      <div style="color: #999; text-align: center;">↓ WebSocket</div>
+      <div style="background: #ecfdf5; padding: 8px 12px; border-radius: 6px;">4️⃣ Backend relays response → caches translation in Firestore</div>
+      <div style="color: #999; text-align: center;">↓ WebSocket</div>
+      <div style="background: #eef2ff; padding: 8px 12px; border-radius: 6px;">5️⃣ App plays translated audio + shows chat bubble with text</div>
+    </div>
+  </div>
+</div>

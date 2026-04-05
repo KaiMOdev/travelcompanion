@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e"/>
+      <stop offset="100%" style="stop-color:#16213e"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#e94560"/>
+      <stop offset="100%" style="stop-color:#ff6b6b"/>
+    </linearGradient>
+    <linearGradient id="globe" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f3460"/>
+      <stop offset="100%" style="stop-color:#533483"/>
+    </linearGradient>
+    <linearGradient id="wave" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#e94560"/>
+      <stop offset="50%" style="stop-color:#ff6b6b"/>
+      <stop offset="100%" style="stop-color:#ffa07a"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background rounded square -->
+  <rect width="1024" height="1024" rx="220" ry="220" fill="url(#bg)"/>
+
+  <!-- Globe circle -->
+  <circle cx="512" cy="440" r="240" fill="none" stroke="url(#globe)" stroke-width="8" opacity="0.4"/>
+
+  <!-- Globe latitude lines -->
+  <ellipse cx="512" cy="440" rx="240" ry="80" fill="none" stroke="url(#globe)" stroke-width="5" opacity="0.3"/>
+  <ellipse cx="512" cy="440" rx="240" ry="160" fill="none" stroke="url(#globe)" stroke-width="5" opacity="0.3"/>
+
+  <!-- Globe longitude lines -->
+  <ellipse cx="512" cy="440" rx="80" ry="240" fill="none" stroke="url(#globe)" stroke-width="5" opacity="0.3"/>
+  <ellipse cx="512" cy="440" rx="160" ry="240" fill="none" stroke="url(#globe)" stroke-width="5" opacity="0.3"/>
+  <line x1="272" y1="440" x2="752" y2="440" stroke="url(#globe)" stroke-width="5" opacity="0.3"/>
+
+  <!-- Sound waves emanating from globe (right side) -->
+  <path d="M 700 370 Q 740 440 700 510" fill="none" stroke="url(#wave)" stroke-width="12" stroke-linecap="round" opacity="0.9"/>
+  <path d="M 740 330 Q 800 440 740 550" fill="none" stroke="url(#wave)" stroke-width="10" stroke-linecap="round" opacity="0.7"/>
+  <path d="M 780 290 Q 860 440 780 590" fill="none" stroke="url(#wave)" stroke-width="8" stroke-linecap="round" opacity="0.5"/>
+
+  <!-- Location pin on globe -->
+  <g transform="translate(460, 310)">
+    <path d="M 52 0 C 23.3 0 0 23.3 0 52 C 0 91 52 140 52 140 S 104 91 104 52 C 104 23.3 80.7 0 52 0 Z" fill="url(#accent)"/>
+    <circle cx="52" cy="50" r="22" fill="#1a1a2e"/>
+  </g>
+
+  <!-- Text: WanderVox -->
+  <text x="512" y="770" text-anchor="middle" font-family="'SF Pro Display', 'Segoe UI', Arial, sans-serif" font-size="110" font-weight="700" letter-spacing="-2">
+    <tspan fill="#ffffff">Wander</tspan><tspan fill="url(#accent)">Vox</tspan>
+  </text>
+
+  <!-- Subtitle -->
+  <text x="512" y="830" text-anchor="middle" font-family="'SF Pro Display', 'Segoe UI', Arial, sans-serif" font-size="42" font-weight="300" fill="#ffffff" opacity="0.5" letter-spacing="8">
+    TRANSLATE THE WORLD
+  </text>
+</svg>

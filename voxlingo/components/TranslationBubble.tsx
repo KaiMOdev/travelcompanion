@@ -1,38 +1,113 @@
-import { View, Text, StyleSheet } from "react-native";
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Clipboard } from 'react-native';
+import { Translation } from '../types';
+import { getLanguageName } from '../constants/languages';
+import { colors, shadow, spacing, radius } from '../constants/theme';
 
-interface TranslationBubbleProps {
-  text: string;
-  isSource: boolean;
-}
+type Props = {
+  translation: Translation;
+  isSpeaking: boolean;
+  onReplay: () => void;
+  onShowCard?: () => void;
+};
 
-export function TranslationBubble({ text, isSource }: TranslationBubbleProps) {
+export function TranslationBubble({ translation, isSpeaking, onReplay, onShowCard }: Props) {
   return (
-    <View style={[styles.bubble, isSource ? styles.source : styles.target]}>
-      <Text style={[styles.text, !isSource && styles.targetText]}>{text}</Text>
+    <View style={styles.container}>
+      <View style={styles.sourceRow}>
+        <TouchableOpacity
+          style={[styles.bubble, styles.sourceBubble]}
+          onLongPress={() => Clipboard.setString(translation.originalText)}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.langBadge}>
+            {getLanguageName(translation.sourceLang)}
+          </Text>
+          <Text style={styles.sourceText}>{translation.originalText}</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={styles.targetRow}>
+        <TouchableOpacity
+          style={[styles.bubble, styles.targetBubble]}
+          onPress={onReplay}
+          onLongPress={onShowCard}
+          activeOpacity={0.7}
+        >
+          <View style={styles.targetHeader}>
+            <Text style={[styles.langBadge, styles.targetBadge]}>
+              {getLanguageName(translation.targetLang)}
+            </Text>
+            <Text style={styles.speakerIcon}>{isSpeaking ? '🔊' : '🔈'}</Text>
+          </View>
+          <Text style={styles.targetText}>
+            {translation.translatedText}
+          </Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    marginVertical: spacing.xs,
+    paddingHorizontal: spacing.lg,
+  },
+  sourceRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    marginVertical: spacing.xs,
+  },
+  targetRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginVertical: spacing.xs,
+  },
   bubble: {
-    maxWidth: "80%",
-    padding: 12,
-    borderRadius: 16,
-    marginVertical: 4,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: radius.xl,
+    maxWidth: '88%',
+    ...shadow('sm'),
   },
-  source: {
-    alignSelf: "flex-start",
-    backgroundColor: "#f3f4f6",
+  sourceBubble: {
+    backgroundColor: colors.sourceBubble,
+    borderBottomLeftRadius: radius.sm,
   },
-  target: {
-    alignSelf: "flex-end",
-    backgroundColor: "#3b82f6",
+  targetBubble: {
+    backgroundColor: colors.targetBubble,
+    borderBottomRightRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 191, 166, 0.15)',
   },
-  text: {
+  targetHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
+  langBadge: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  targetBadge: {
+    color: colors.primaryDark,
+  },
+  speakerIcon: {
+    fontSize: 14,
+  },
+  sourceText: {
     fontSize: 16,
-    color: "#1f2937",
+    color: colors.textPrimary,
+    lineHeight: 23,
   },
   targetText: {
-    color: "#ffffff",
+    fontSize: 16,
+    color: colors.targetText,
+    fontWeight: '600',
+    lineHeight: 23,
   },
 });

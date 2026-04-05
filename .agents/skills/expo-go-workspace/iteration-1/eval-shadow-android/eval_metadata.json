@@ -1,0 +1,27 @@
+{
+  "eval_id": 0,
+  "eval_name": "shadow-android",
+  "prompt": "The shadow on my card component works on iOS but the Android version just shows a flat box with no shadow",
+  "assertions": [
+    {
+      "text": "Mentions that Android uses 'elevation' instead of iOS shadow properties",
+      "type": "content_check"
+    },
+    {
+      "text": "Mentions that backgroundColor must be set for elevation to render",
+      "type": "content_check"
+    },
+    {
+      "text": "Provides a Platform.select or Platform.OS code example",
+      "type": "content_check"
+    },
+    {
+      "text": "Warns about high borderRadius values (>2000) causing crashes on Android",
+      "type": "content_check"
+    },
+    {
+      "text": "References or checks the actual project code for existing shadow usage",
+      "type": "content_check"
+    }
+  ]
+}

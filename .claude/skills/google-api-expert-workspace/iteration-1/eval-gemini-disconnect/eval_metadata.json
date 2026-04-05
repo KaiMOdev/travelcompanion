@@ -1,0 +1,11 @@
+{
+  "eval_id": 0,
+  "eval_name": "gemini-disconnect",
+  "prompt": "The Gemini Live session keeps disconnecting after 30 seconds of silence — how do I fix this?",
+  "assertions": [
+    {"text": "References the GeminiLiveSession class or geminiProxy.ts file", "type": "must_contain"},
+    {"text": "Suggests a keep-alive/heartbeat mechanism with silent audio frames", "type": "must_contain"},
+    {"text": "Provides concrete code implementation, not just explanation", "type": "must_contain"},
+    {"text": "Uses correct audio format (PCM 16kHz) in any audio-related code", "type": "must_contain"}
+  ]
+}

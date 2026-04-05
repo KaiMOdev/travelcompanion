@@ -1,0 +1,11 @@
+{
+  "eval_id": 0,
+  "run_type": "without_skill",
+  "expectations": [
+    { "text": "Mentions that Android uses 'elevation' instead of iOS shadow properties", "passed": true, "evidence": "Opening paragraph identifies elevation vs shadow split" },
+    { "text": "Mentions that backgroundColor must be set for elevation to render", "passed": false, "evidence": "Not mentioned anywhere in the response" },
+    { "text": "Provides a Platform.select or Platform.OS code example", "passed": true, "evidence": "Option A code snippet uses Platform-aware shadow styles" },
+    { "text": "Warns about high borderRadius values (>2000) causing crashes on Android", "passed": false, "evidence": "Not mentioned in the response" },
+    { "text": "References or checks the actual project code for existing shadow usage", "passed": true, "evidence": "Deeply analyzed makeShadow helper, specific card styles in settings.tsx, glow presets, and which components use shadows" }
+  ]
+}

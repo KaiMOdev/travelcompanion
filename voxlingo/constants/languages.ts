@@ -1,40 +1,38 @@
-import { LanguageCode } from "../types";
+import { Language } from '../types';
 
-export interface Language {
-  code: LanguageCode;
-  name: string;
-  nativeName: string;
-}
-
-export const SUPPORTED_LANGUAGES: Language[] = [
-  { code: "en", name: "English", nativeName: "English" },
-  { code: "es", name: "Spanish", nativeName: "Español" },
-  { code: "zh", name: "Chinese", nativeName: "中文" },
-  { code: "ar", name: "Arabic", nativeName: "العربية" },
-  { code: "hi", name: "Hindi", nativeName: "हिन्दी" },
-  { code: "ja", name: "Japanese", nativeName: "日本語" },
-  { code: "pt", name: "Portuguese", nativeName: "Português" },
-  { code: "it", name: "Italian", nativeName: "Italiano" },
-  { code: "ru", name: "Russian", nativeName: "Русский" },
-  { code: "tr", name: "Turkish", nativeName: "Türkçe" },
-  { code: "pl", name: "Polish", nativeName: "Polski" },
-  { code: "nl", name: "Dutch", nativeName: "Nederlands" },
-  { code: "ko", name: "Korean", nativeName: "한국어" },
-  { code: "th", name: "Thai", nativeName: "ไทย" },
-  { code: "vi", name: "Vietnamese", nativeName: "Tiếng Việt" },
-  { code: "id", name: "Indonesian", nativeName: "Bahasa Indonesia" },
-  { code: "tl", name: "Tagalog", nativeName: "Tagalog" },
+export const LANGUAGES: Language[] = [
+  { code: 'en', name: 'English' },
+  { code: 'es', name: 'Spanish' },
+  { code: 'zh', name: 'Mandarin Chinese' },
+  { code: 'hi', name: 'Hindi' },
+  { code: 'ja', name: 'Japanese' },
+  { code: 'ko', name: 'Korean' },
+  { code: 'th', name: 'Thai' },
+  { code: 'vi', name: 'Vietnamese' },
+  { code: 'id', name: 'Indonesian' },
+  { code: 'tl', name: 'Tagalog' },
+  { code: 'pt', name: 'Portuguese' },
+  { code: 'it', name: 'Italian' },
+  { code: 'ru', name: 'Russian' },
+  { code: 'tr', name: 'Turkish' },
+  { code: 'pl', name: 'Polish' },
+  { code: 'nl', name: 'Dutch' },
+  { code: 'ar', name: 'Arabic' },
+  { code: 'fr', name: 'French' },
+  { code: 'de', name: 'German' },
+  { code: 'sv', name: 'Swedish' },
+  { code: 'no', name: 'Norwegian' },
+  { code: 'da', name: 'Danish' },
+  { code: 'fi', name: 'Finnish' },
+  { code: 'el', name: 'Greek' },
+  { code: 'cs', name: 'Czech' },
+  { code: 'ro', name: 'Romanian' },
+  { code: 'hu', name: 'Hungarian' },
+  { code: 'uk', name: 'Ukrainian' },
+  { code: 'hr', name: 'Croatian' },
 ];
 
-export const DEFAULT_SOURCE_LANG: LanguageCode = "en";
-export const DEFAULT_TARGET_LANG: LanguageCode = "es";
-
-export function getLanguageName(code: LanguageCode): string {
-  const lang = SUPPORTED_LANGUAGES.find((l) => l.code === code);
+export const getLanguageName = (code: string): string => {
+  const lang = LANGUAGES.find((l) => l.code === code);
   return lang ? lang.name : code;
-}
-
-export function getLanguageNativeName(code: LanguageCode): string {
-  const lang = SUPPORTED_LANGUAGES.find((l) => l.code === code);
-  return lang ? lang.nativeName : code;
-}
+};

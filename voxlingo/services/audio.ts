@@ -1,0 +1,211 @@
+import { Platform } from 'react-native';
+import { Audio } from 'expo-av';
+import * as FileSystem from 'expo-file-system/legacy';
+
+let recording: Audio.Recording | null = null;
+
+async function setRecordingMode() {
+  await Audio.setAudioModeAsync({
+    allowsRecordingIOS: true,
+    playsInSilentModeIOS: true,
+    staysActiveInBackground: false,
+    shouldDuckAndroid: true,
+    playThroughEarpieceAndroid: false,
+  });
+}
+
+async function setPlaybackMode() {
+  await Audio.setAudioModeAsync({
+    allowsRecordingIOS: false,
+    playsInSilentModeIOS: true,
+    staysActiveInBackground: false,
+    shouldDuckAndroid: true,
+    playThroughEarpieceAndroid: false,
+  });
+}
+
+// Platform-specific recording options
+// Android: THREE_GPP/AMR_NB avoids "streaming not supported" error after TTS
+// iOS: MPEG4AAC for higher quality
+const RECORDING_OPTIONS: Audio.RecordingOptions = {
+  android: {
+    extension: '.3gp',
+    outputFormat: Audio.AndroidOutputFormat.THREE_GPP,
+    audioEncoder: Audio.AndroidAudioEncoder.AMR_NB,
+    sampleRate: 16000,
+    numberOfChannels: 1,
+    bitRate: 12200,
+  },
+  ios: {
+    extension: '.m4a',
+    outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
+    audioQuality: Audio.IOSAudioQuality.HIGH,
+    sampleRate: 44100,
+    numberOfChannels: 1,
+    bitRate: 128000,
+    linearPCMBitDepth: 16,
+    linearPCMIsBigEndian: false,
+    linearPCMIsFloat: false,
+  },
+  web: {},
+};
+
+// --- Native (iOS/Android) using expo-av ---
+
+async function startNativeRecording(): Promise<void> {
+  const { status } = await Audio.requestPermissionsAsync();
+  if (status !== 'granted') {
+    throw new Error('Microphone permission is required to record audio');
+  }
+
+  if (recording) {
+    try {
+      await recording.stopAndUnloadAsync();
+    } catch {
+      // ignore cleanup errors
+    }
+    recording = null;
+  }
+
+  await setPlaybackMode();
+  await setRecordingMode();
+
+  const newRecording = new Audio.Recording();
+  await newRecording.prepareToRecordAsync(RECORDING_OPTIONS);
+  await newRecording.startAsync();
+  recording = newRecording;
+}
+
+async function stopNativeRecording(): Promise<string> {
+  if (!recording) {
+    throw new Error('No recording in progress');
+  }
+
+  const current = recording;
+  recording = null;
+
+  await current.stopAndUnloadAsync();
+  await setPlaybackMode();
+
+  const uri = current.getURI();
+  if (!uri) {
+    throw new Error('Recording failed — no file URI');
+  }
+
+  const base64 = await FileSystem.readAsStringAsync(uri, {
+    encoding: 'base64',
+  });
+
+  return base64;
+}
+
+// --- Web using Web Audio API ---
+
+let mediaStream: MediaStream | null = null;
+let audioContext: AudioContext | null = null;
+let pcmChunks: Float32Array[] = [];
+
+async function startWebRecording(): Promise<void> {
+  mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  audioContext = new AudioContext({ sampleRate: 16000 });
+  pcmChunks = [];
+
+  const source = audioContext.createMediaStreamSource(mediaStream);
+  const processor = audioContext.createScriptProcessor(4096, 1, 1);
+
+  processor.onaudioprocess = (e) => {
+    const data = e.inputBuffer.getChannelData(0);
+    pcmChunks.push(new Float32Array(data));
+  };
+
+  source.connect(processor);
+  processor.connect(audioContext.destination);
+}
+
+async function stopWebRecording(): Promise<string> {
+  if (!mediaStream || !audioContext) {
+    throw new Error('No recording in progress');
+  }
+
+  mediaStream.getTracks().forEach((t) => t.stop());
+  await audioContext.close();
+
+  const totalLength = pcmChunks.reduce((sum, c) => sum + c.length, 0);
+  const merged = new Float32Array(totalLength);
+  let offset = 0;
+  for (const chunk of pcmChunks) {
+    merged.set(chunk, offset);
+    offset += chunk.length;
+  }
+
+  const int16 = new Int16Array(merged.length);
+  for (let i = 0; i < merged.length; i++) {
+    const s = Math.max(-1, Math.min(1, merged[i]));
+    int16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+  }
+
+  const wavBuffer = createWavBuffer(int16, 16000);
+  const bytes = new Uint8Array(wavBuffer);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+
+  mediaStream = null;
+  audioContext = null;
+  pcmChunks = [];
+
+  return btoa(binary);
+}
+
+function createWavBuffer(samples: Int16Array, sampleRate: number): ArrayBuffer {
+  const byteLength = samples.length * 2;
+  const buffer = new ArrayBuffer(44 + byteLength);
+  const view = new DataView(buffer);
+
+  writeString(view, 0, 'RIFF');
+  view.setUint32(4, 36 + byteLength, true);
+  writeString(view, 8, 'WAVE');
+
+  writeString(view, 12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+
+  writeString(view, 36, 'data');
+  view.setUint32(40, byteLength, true);
+
+  const output = new Int16Array(buffer, 44);
+  output.set(samples);
+
+  return buffer;
+}
+
+function writeString(view: DataView, offset: number, str: string) {
+  for (let i = 0; i < str.length; i++) {
+    view.setUint8(offset + i, str.charCodeAt(i));
+  }
+}
+
+// --- Public API ---
+
+export async function startRecording(): Promise<void> {
+  if (Platform.OS === 'web') {
+    return startWebRecording();
+  }
+  return startNativeRecording();
+}
+
+export async function stopRecording(): Promise<{ audio: string; mimeType: string }> {
+  if (Platform.OS === 'web') {
+    const audio = await stopWebRecording();
+    return { audio, mimeType: 'audio/wav' };
+  }
+  const audio = await stopNativeRecording();
+  const mimeType = Platform.OS === 'android' ? 'audio/3gpp' : 'audio/mp4';
+  return { audio, mimeType };
+}

@@ -1,0 +1,10 @@
+{
+  "eval_id": 0,
+  "run_type": "with_skill",
+  "expectations": [
+    {"text": "References the GeminiLiveSession class or geminiProxy.ts file", "passed": true, "evidence": "Directly references 'geminiProxy.ts' and 'GeminiLiveSession' class, includes full class modification"},
+    {"text": "Suggests a keep-alive/heartbeat mechanism with silent audio frames", "passed": true, "evidence": "Implements SILENT_FRAME = Buffer.alloc(16000) sent every 15 seconds, explains why silent frames work"},
+    {"text": "Provides concrete code implementation, not just explanation", "passed": true, "evidence": "Complete modified class with keepAliveInterval, startKeepAlive/stopKeepAlive methods, plus auto-reconnect in index.ts"},
+    {"text": "Uses correct audio format (PCM 16kHz) in any audio-related code", "passed": true, "evidence": "Silent frame is 16000 bytes (0.5s of 16-bit PCM at 16kHz), mimeType 'audio/pcm;rate=16000' used correctly"}
+  ]
+}

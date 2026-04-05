@@ -1,0 +1,11 @@
+{
+  "eval_id": 2,
+  "eval_name": "python-vision",
+  "prompt": "Convert the image translation endpoint to Python for a FastAPI backend",
+  "assertions": [
+    {"text": "Uses google-genai Python package (not deprecated google-generativeai)", "type": "must_contain"},
+    {"text": "Strips base64 data URI prefix before sending to API", "type": "must_contain"},
+    {"text": "Uses async def endpoints with proper FastAPI patterns", "type": "must_contain"},
+    {"text": "Includes error handling with appropriate HTTP error responses", "type": "must_contain"}
+  ]
+}

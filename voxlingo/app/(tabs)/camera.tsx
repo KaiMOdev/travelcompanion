@@ -1,115 +1,76 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import React, { useRef, useState } from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
-  FlatList,
-  StyleSheet,
-  SafeAreaView,
-  ActivityIndicator,
   Image,
-} from "react-native";
-import { CameraView, useCameraPermissions } from "expo-camera";
-import { LanguageCode, VisionTranslationResult } from "../../types";
-import { DEFAULT_TARGET_LANG } from "../../constants/languages";
-import { LanguagePicker } from "../../components/LanguagePicker";
-import { translateImage } from "../../services/vision";
-
-type ScanMode = "photo" | "livescan";
-
-interface ScanResult {
-  id: string;
-  imageUri: string | null;
-  result: VisionTranslationResult;
-  timestamp: number;
-}
+  TouchableOpacity,
+  ScrollView,
+  ActivityIndicator,
+  StyleSheet,
+  Platform,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as ImagePicker from 'expo-image-picker';
+import { LanguagePicker } from '../../components/LanguagePicker';
+import { ErrorBanner } from '../../components/ErrorBanner';
+import { MenuResult } from '../../components/MenuResult';
+import { SignResult } from '../../components/SignResult';
+import { OfflineBanner } from '../../components/OfflineBanner';
+import { translateImageSmart } from '../../services/vision';
+import { SmartVisionResponse } from '../../types';
+import { colors, shadow, spacing, radius } from '../../constants/theme';
 
 export default function CameraScreen() {
   const [permission, requestPermission] = useCameraPermissions();
-  const [targetLang, setTargetLang] = useState<LanguageCode>(DEFAULT_TARGET_LANG);
-  const [scanMode, setScanMode] = useState<ScanMode>("photo");
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [scans, setScans] = useState<ScanResult[]>([]);
+  const [targetLang, setTargetLang] = useState('nl');
+  const [photo, setPhoto] = useState<string | null>(null);
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [result, setResult] = useState<SmartVisionResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const cameraRef = useRef<CameraView>(null);
-  const liveScanInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [torchEnabled, setTorchEnabled] = useState(false);
+  const cameraRef = useRef<CameraView | null>(null);
+  const captureId = useRef(0);
 
-  useEffect(() => {
-    return () => {
-      if (liveScanInterval.current) {
-        clearInterval(liveScanInterval.current);
-        liveScanInterval.current = null;
-      }
-    };
-  }, []);
-
-  const captureAndTranslate = useCallback(async () => {
-    if (!cameraRef.current || isProcessing) return;
-
-    try {
-      setIsProcessing(true);
-      setError(null);
-
-      const photo = await cameraRef.current.takePictureAsync({
-        base64: true,
-        quality: 0.5,
-      });
-
-      if (!photo?.base64) {
-        setError("Failed to capture photo");
-        setIsProcessing(false);
-        return;
-      }
-
-      const result = await translateImage(photo.base64, targetLang);
-
-      const scanResult: ScanResult = {
-        id: Date.now().toString(),
-        imageUri: photo.uri,
-        result,
-        timestamp: Date.now(),
-      };
-
-      setScans((prev) => [scanResult, ...prev]);
-    } catch (err: any) {
-      setError(err.message || "Translation failed");
-    } finally {
-      setIsProcessing(false);
-    }
-  }, [targetLang, isProcessing]);
-
-  const toggleLiveScan = useCallback(() => {
-    if (liveScanInterval.current) {
-      clearInterval(liveScanInterval.current);
-      liveScanInterval.current = null;
-      setScanMode("photo");
-    } else {
-      setScanMode("livescan");
-      liveScanInterval.current = setInterval(() => {
-        captureAndTranslate();
-      }, 2000);
-    }
-  }, [captureAndTranslate]);
+  if (Platform.OS === 'web') {
+    return (
+      <SafeAreaView style={styles.containerLight}>
+        <View style={styles.centered}>
+          <View style={styles.emptyCircle}>
+            <Text style={styles.emptyIconLarge}>📷</Text>
+          </View>
+          <Text style={styles.emptyTitle}>Camera not available</Text>
+          <Text style={styles.fallbackText}>
+            Use a mobile device to translate photos of text.
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (!permission) {
     return (
-      <SafeAreaView style={styles.container}>
-        <ActivityIndicator size="large" color="#3b82f6" />
+      <SafeAreaView style={styles.containerLight}>
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
       </SafeAreaView>
     );
   }
 
   if (!permission.granted) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.permissionContainer}>
-          <Text style={styles.permissionText}>
-            Camera access is needed to translate text from photos
+      <SafeAreaView style={styles.containerLight}>
+        <View style={styles.centered}>
+          <View style={styles.emptyCircle}>
+            <Text style={styles.emptyIconLarge}>🔒</Text>
+          </View>
+          <Text style={styles.emptyTitle}>Camera access needed</Text>
+          <Text style={styles.fallbackText}>
+            Grant camera permission to translate menus, signs, and documents.
           </Text>
-          <TouchableOpacity
-            style={styles.permissionButton}
-            onPress={requestPermission}
-          >
+          <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
             <Text style={styles.permissionButtonText}>Grant Permission</Text>
           </TouchableOpacity>
         </View>
@@ -117,352 +78,380 @@ export default function CameraScreen() {
     );
   }
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.topBar}>
-        <LanguagePicker
-          selectedLang={targetLang}
-          onSelect={setTargetLang}
-          label="Translate to"
-        />
-        <View style={styles.modeToggle}>
-          <TouchableOpacity
-            style={[
-              styles.modeButton,
-              scanMode === "photo" && styles.modeButtonActive,
-            ]}
-            onPress={() => {
-              if (liveScanInterval.current) {
-                clearInterval(liveScanInterval.current);
-                liveScanInterval.current = null;
-              }
-              setScanMode("photo");
-            }}
-          >
-            <Text
-              style={[
-                styles.modeText,
-                scanMode === "photo" && styles.modeTextActive,
-              ]}
-            >
-              Photo
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.modeButton,
-              scanMode === "livescan" && styles.modeButtonActive,
-            ]}
-            onPress={toggleLiveScan}
-          >
-            <Text
-              style={[
-                styles.modeText,
-                scanMode === "livescan" && styles.modeTextActive,
-              ]}
-            >
-              Live Scan
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+  const handleCapture = async () => {
+    if (!cameraRef.current) return;
+    try {
+      const pic = await cameraRef.current.takePictureAsync({ base64: true, quality: 0.7 });
+      if (!pic || !pic.base64) { setError('Failed to capture photo'); return; }
 
-      <View style={styles.cameraContainer}>
-        <CameraView ref={cameraRef} style={styles.camera} facing="back">
-          {isProcessing && (
-            <View style={styles.processingOverlay}>
-              <ActivityIndicator size="large" color="#ffffff" />
-              <Text style={styles.processingText}>Translating...</Text>
+      captureId.current += 1;
+      const thisCapture = captureId.current;
+      setPhoto(pic.uri);
+      setResult(null);
+      setError(null);
+      setIsTranslating(true);
+
+      try {
+        const visionResult = await translateImageSmart(pic.base64, targetLang);
+        if (captureId.current !== thisCapture) return;
+        setResult(visionResult);
+      } catch (err: unknown) {
+        if (captureId.current !== thisCapture) return;
+        setError(err instanceof Error ? err.message : 'Translation failed');
+      } finally {
+        if (captureId.current === thisCapture) setIsTranslating(false);
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to capture photo');
+    }
+  };
+
+  const handleGallery = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        base64: true,
+        quality: 0.7,
+      });
+      const asset = result.assets?.[0];
+      if (result.canceled || !asset?.base64) return;
+
+      captureId.current += 1;
+      const thisCapture = captureId.current;
+      const base64 = asset.base64;
+      setPhoto(asset.uri);
+      setResult(null);
+      setError(null);
+      setIsTranslating(true);
+
+      try {
+        const visionResult = await translateImageSmart(base64, targetLang);
+        if (captureId.current !== thisCapture) return;
+        setResult(visionResult);
+      } catch (err: unknown) {
+        if (captureId.current !== thisCapture) return;
+        setError(err instanceof Error ? err.message : 'Translation failed');
+      } finally {
+        if (captureId.current === thisCapture) setIsTranslating(false);
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to pick image');
+    }
+  };
+
+  const handleReset = () => {
+    captureId.current += 1;
+    setPhoto(null);
+    setResult(null);
+    setError(null);
+  };
+
+  if (photo) {
+    return (
+      <View style={styles.containerLight}>
+        <SafeAreaView edges={['top']} style={styles.resultHeader}>
+          <Text style={styles.resultHeaderText}>📷 Translation Result</Text>
+        </SafeAreaView>
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+          <View style={styles.photoCard}>
+            <Image source={{ uri: photo }} style={styles.photo} resizeMode="cover" />
+          </View>
+
+          {isTranslating && (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={styles.loadingText}>Translating...</Text>
             </View>
           )}
 
-          {scans.length > 0 && (
-            <View style={styles.translationOverlay}>
-              <Text style={styles.overlayDetected}>
-                {scans[0].result.detectedLanguage}
-              </Text>
-              <Text style={styles.overlayOriginal}>
-                {scans[0].result.originalText}
-              </Text>
-              <Text style={styles.overlayTranslated}>
-                {scans[0].result.translatedText}
-              </Text>
+          {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
+
+          {result && result.contentType === 'menu' && (
+            <View style={styles.resultCard}>
+              <MenuResult result={result} />
             </View>
           )}
-        </CameraView>
 
-        {scanMode === "photo" && (
-          <TouchableOpacity
-            style={styles.shutterButton}
-            onPress={captureAndTranslate}
-            disabled={isProcessing}
-            activeOpacity={0.7}
-          >
-            <View
-              style={[
-                styles.shutterInner,
-                isProcessing && styles.shutterDisabled,
-              ]}
-            />
-          </TouchableOpacity>
-        )}
+          {result && result.contentType === 'sign' && (
+            <View style={styles.resultCard}>
+              <SignResult result={result} />
+            </View>
+          )}
 
-        {scanMode === "livescan" && liveScanInterval.current && (
-          <View style={styles.liveScanIndicator}>
-            <View style={styles.liveDot} />
-            <Text style={styles.liveText}>Scanning...</Text>
-          </View>
-        )}
-      </View>
-
-      {error && (
-        <View style={styles.errorBar}>
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
-      )}
-
-      {scans.length > 0 && (
-        <View style={styles.scansContainer}>
-          <View style={styles.scansHeader}>
-            <Text style={styles.scansTitle}>Recent Scans</Text>
-            <TouchableOpacity onPress={() => setScans([])}>
-              <Text style={styles.clearText}>Clear</Text>
-            </TouchableOpacity>
-          </View>
-          <FlatList
-            data={scans}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <View style={styles.scanItem}>
-                {item.imageUri && (
-                  <Image
-                    source={{ uri: item.imageUri }}
-                    style={styles.scanThumbnail}
-                  />
-                )}
-                <View style={styles.scanTextContainer}>
-                  <Text style={styles.scanDetected} numberOfLines={1}>
-                    {item.result.detectedLanguage}
-                  </Text>
-                  <Text style={styles.scanOriginal} numberOfLines={2}>
-                    {item.result.originalText}
-                  </Text>
-                  <Text style={styles.scanTranslated} numberOfLines={2}>
-                    {item.result.translatedText}
-                  </Text>
-                </View>
+          {result && result.contentType === 'general' && (
+            <View style={styles.resultCard}>
+              <View style={styles.detectedBadge}>
+                <Text style={styles.detectedText}>🌐 {result.detectedLanguage}</Text>
               </View>
-            )}
-          />
+              <View style={styles.resultSection}>
+                <Text style={styles.resultLabel}>ORIGINAL</Text>
+                <Text style={styles.originalText}>{result.originalText}</Text>
+              </View>
+              <View style={styles.resultDivider} />
+              <View style={styles.resultSection}>
+                <Text style={styles.resultLabel}>TRANSLATION</Text>
+                <Text style={styles.translatedText}>
+                  {result.translatedText || 'No text detected in this image'}
+                </Text>
+              </View>
+            </View>
+          )}
+        </ScrollView>
+        <TouchableOpacity style={styles.newPhotoButton} onPress={handleReset}>
+          <Text style={styles.newPhotoText}>📷  Take New Photo</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <OfflineBanner />
+      <SafeAreaView edges={['top']} style={styles.pickerBar}>
+        <Text style={styles.pickerTitle}>TRANSLATE TO</Text>
+        <View style={styles.pickerWrapper}>
+          <LanguagePicker selectedCode={targetLang} onSelect={setTargetLang} label="" />
         </View>
-      )}
-    </SafeAreaView>
+      </SafeAreaView>
+
+      <CameraView ref={cameraRef} style={styles.camera} facing="back" flash={torchEnabled ? 'on' : 'off'} enableTorch={torchEnabled} onCameraReady={() => setCameraReady(true)} />
+
+      <View style={styles.shutterBar}>
+        <TouchableOpacity
+          style={styles.flashButton}
+          onPress={() => setTorchEnabled(!torchEnabled)}
+        >
+          <Text style={styles.flashIcon}>{torchEnabled ? '⚡' : '🔦'}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.shutterOuter, !cameraReady && styles.shutterDisabled]}
+          onPress={handleCapture}
+          disabled={!cameraReady}
+          activeOpacity={0.8}
+        >
+          <View style={styles.shutterInner}>
+            <Text style={styles.shutterIcon}>📸</Text>
+          </View>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.flashButton}
+          onPress={handleGallery}
+        >
+          <Text style={styles.flashIcon}>🖼️</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000000",
+    backgroundColor: colors.cameraBg,
   },
-  topBar: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-end",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: "#111827",
-  },
-  modeToggle: {
-    flexDirection: "row",
-    backgroundColor: "#1f2937",
-    borderRadius: 8,
-    overflow: "hidden",
-  },
-  modeButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  modeButtonActive: {
-    backgroundColor: "#3b82f6",
-  },
-  modeText: {
-    color: "#9ca3af",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  modeTextActive: {
-    color: "#ffffff",
-  },
-  cameraContainer: {
+  containerLight: {
     flex: 1,
-    position: "relative",
+    backgroundColor: colors.background,
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xxxl,
+  },
+  emptyCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.primaryGlow,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.xl,
+  },
+  emptyIconLarge: {
+    fontSize: 36,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+  },
+  fallbackText: {
+    fontSize: 15,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  permissionButton: {
+    marginTop: spacing.xl,
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.xxl,
+    paddingVertical: 14,
+    borderRadius: radius.full,
+    ...shadow('glow'),
+  },
+  permissionButtonText: {
+    color: colors.textOnPrimary,
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  pickerBar: {
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.divider,
+  },
+  pickerTitle: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: colors.textMuted,
+    letterSpacing: 1,
+    marginBottom: spacing.sm,
+  },
+  pickerWrapper: {
+    minHeight: 56,
   },
   camera: {
     flex: 1,
   },
-  processingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    alignItems: "center",
-    justifyContent: "center",
+  shutterBar: {
+    backgroundColor: colors.shutterBg,
+    paddingVertical: spacing.xl,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
   },
-  processingText: {
-    color: "#ffffff",
-    fontSize: 16,
-    marginTop: 8,
+  flashButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  translationOverlay: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.75)",
-    padding: 16,
+  flashIcon: {
+    fontSize: 20,
   },
-  overlayDetected: {
-    color: "#9ca3af",
-    fontSize: 12,
-    textTransform: "uppercase",
-    marginBottom: 4,
-  },
-  overlayOriginal: {
-    color: "#d1d5db",
-    fontSize: 14,
-    marginBottom: 4,
-  },
-  overlayTranslated: {
-    color: "#ffffff",
-    fontSize: 18,
-    fontWeight: "bold",
-  },
-  shutterButton: {
-    position: "absolute",
-    bottom: 24,
-    alignSelf: "center",
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: "rgba(255, 255, 255, 0.3)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  shutterInner: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: "#ffffff",
+  shutterOuter: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 4,
+    borderColor: colors.shutterRing,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...shadow('glow'),
   },
   shutterDisabled: {
-    backgroundColor: "#9ca3af",
+    opacity: 0.4,
   },
-  liveScanIndicator: {
-    position: "absolute",
-    top: 16,
-    alignSelf: "center",
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(239, 68, 68, 0.9)",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    gap: 6,
+  shutterInner: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  liveDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#ffffff",
+  shutterIcon: {
+    fontSize: 30,
   },
-  liveText: {
-    color: "#ffffff",
-    fontSize: 14,
-    fontWeight: "600",
+  resultHeader: {
+    backgroundColor: colors.headerBg,
+    paddingHorizontal: spacing.xxl,
+    paddingBottom: spacing.lg,
+    paddingTop: spacing.sm,
   },
-  errorBar: {
-    backgroundColor: "#fef2f2",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+  resultHeaderText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.headerText,
   },
-  errorText: {
-    color: "#dc2626",
-    fontSize: 14,
-    textAlign: "center",
-  },
-  scansContainer: {
-    maxHeight: 200,
-    backgroundColor: "#111827",
-  },
-  scansHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: "#1f2937",
-  },
-  scansTitle: {
-    color: "#ffffff",
-    fontSize: 14,
-    fontWeight: "bold",
-  },
-  clearText: {
-    color: "#6b7280",
-    fontSize: 14,
-  },
-  scanItem: {
-    flexDirection: "row",
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#1f2937",
-  },
-  scanThumbnail: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
-    marginRight: 12,
-  },
-  scanTextContainer: {
+  scrollView: {
     flex: 1,
   },
-  scanDetected: {
-    color: "#6b7280",
+  scrollContent: {
+    paddingBottom: spacing.xxl,
+  },
+  photoCard: {
+    margin: spacing.lg,
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+    ...shadow('md'),
+  },
+  photo: {
+    width: '100%',
+    height: 280,
+    backgroundColor: colors.surfaceAlt,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    padding: spacing.xxl,
+  },
+  loadingText: {
+    marginTop: spacing.md,
+    fontSize: 15,
+    color: colors.textSecondary,
+  },
+  resultCard: {
+    marginHorizontal: spacing.lg,
+    padding: spacing.xl,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    ...shadow('sm'),
+  },
+  detectedBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.primaryGlow,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.full,
+    marginBottom: spacing.lg,
+  },
+  detectedText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: colors.primaryDark,
+  },
+  resultSection: {
+    marginVertical: spacing.sm,
+  },
+  resultLabel: {
     fontSize: 11,
-    textTransform: "uppercase",
+    fontWeight: 'bold',
+    color: colors.textMuted,
+    letterSpacing: 1,
+    marginBottom: spacing.sm,
   },
-  scanOriginal: {
-    color: "#9ca3af",
-    fontSize: 13,
-    marginTop: 2,
+  resultDivider: {
+    height: 1,
+    backgroundColor: colors.divider,
+    marginVertical: spacing.md,
   },
-  scanTranslated: {
-    color: "#ffffff",
-    fontSize: 14,
-    fontWeight: "600",
-    marginTop: 2,
-  },
-  permissionContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-  },
-  permissionText: {
-    color: "#ffffff",
+  originalText: {
     fontSize: 16,
-    textAlign: "center",
-    marginBottom: 16,
+    color: colors.textPrimary,
+    lineHeight: 24,
   },
-  permissionButton: {
-    backgroundColor: "#3b82f6",
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
+  translatedText: {
+    fontSize: 18,
+    color: colors.primary,
+    fontWeight: 'bold',
+    lineHeight: 26,
   },
-  permissionButtonText: {
-    color: "#ffffff",
+  newPhotoButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: 16,
+    alignItems: 'center',
+    ...shadow('glow'),
+  },
+  newPhotoText: {
+    color: colors.textOnPrimary,
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: 'bold',
+    letterSpacing: 0.3,
   },
 });

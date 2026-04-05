@@ -1,0 +1,23 @@
+{
+  "skill_name": "google-api-expert",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "The Gemini Live session keeps disconnecting after 30 seconds of silence — how do I fix this?",
+      "expected_output": "Explains keep-alive/heartbeat mechanism, references the GeminiLiveSession class, mentions session timeout behavior, provides concrete code fix",
+      "files": []
+    },
+    {
+      "id": 1,
+      "prompt": "I want to add a delete feature so users can remove saved words from their word list in Firestore",
+      "expected_output": "Uses correct subcollection path users/{uid}/wordlists/{docId}, uses deleteDoc from firebase/firestore, adds function to firebase.ts service, follows existing patterns",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Convert the image translation endpoint to Python for a FastAPI backend",
+      "expected_output": "Uses google-genai Python SDK, preserves base64 stripping pattern, matches the same request structure, includes proper error handling and async patterns",
+      "files": []
+    }
+  ]
+}

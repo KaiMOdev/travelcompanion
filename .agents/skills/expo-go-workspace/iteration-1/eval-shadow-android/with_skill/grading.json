@@ -1,0 +1,11 @@
+{
+  "eval_id": 0,
+  "run_type": "with_skill",
+  "expectations": [
+    { "text": "Mentions that Android uses 'elevation' instead of iOS shadow properties", "passed": true, "evidence": "First paragraph: 'Android does not support iOS-style shadow properties... You need to use elevation instead.'" },
+    { "text": "Mentions that backgroundColor must be set for elevation to render", "passed": true, "evidence": "Section '1. backgroundColor is required' with code examples showing the fix" },
+    { "text": "Provides a Platform.select or Platform.OS code example", "passed": true, "evidence": "Full Platform.select code example in 'The Fix' section" },
+    { "text": "Warns about high borderRadius values (>2000) causing crashes on Android", "passed": true, "evidence": "Section '2. High borderRadius can crash Android' — mentions 9999 and suggests 999 max" },
+    { "text": "References or checks the actual project code for existing shadow usage", "passed": true, "evidence": "Section 'Your Project Already Has This' — mentions makeShadow helper in theme/spacing.ts" }
+  ]
+}
