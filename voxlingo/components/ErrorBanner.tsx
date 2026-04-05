@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { colors, spacing, radius } from '../constants/theme';
 
 type Props = {
   message: string | null;
@@ -9,7 +10,7 @@ type Props = {
 export function ErrorBanner({ message, onDismiss }: Props) {
   useEffect(() => {
     if (message) {
-      const timer = setTimeout(onDismiss, 3000);
+      const timer = setTimeout(onDismiss, 4000);
       return () => clearTimeout(timer);
     }
   }, [message, onDismiss]);
@@ -18,6 +19,7 @@ export function ErrorBanner({ message, onDismiss }: Props) {
 
   return (
     <View style={styles.banner}>
+      <Text style={styles.icon}>⚠️</Text>
       <Text style={styles.text}>{message}</Text>
     </View>
   );
@@ -25,15 +27,24 @@ export function ErrorBanner({ message, onDismiss }: Props) {
 
 const styles = StyleSheet.create({
   banner: {
-    backgroundColor: '#ffebee',
-    padding: 12,
-    marginHorizontal: 16,
-    borderRadius: 8,
-    borderLeftWidth: 4,
-    borderLeftColor: '#d32f2f',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.errorBg,
+    padding: spacing.md,
+    marginHorizontal: spacing.lg,
+    marginVertical: spacing.sm,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.errorBorder,
+  },
+  icon: {
+    fontSize: 16,
+    marginRight: spacing.sm,
   },
   text: {
-    color: '#c62828',
+    color: colors.error,
     fontSize: 14,
+    flex: 1,
+    lineHeight: 20,
   },
 });

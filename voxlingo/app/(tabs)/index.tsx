@@ -13,6 +13,7 @@ import { TranslationBubble } from '../../components/TranslationBubble';
 import { RecordButton } from '../../components/RecordButton';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import { Translation } from '../../types';
+import { colors, spacing, radius, shadow } from '../../constants/theme';
 
 export default function TravelScreen() {
   const [sourceLang, setSourceLang] = useState('en');
@@ -32,24 +33,29 @@ export default function TravelScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.header}>VoxLingo</Text>
+      <View style={styles.headerBar}>
+        <Text style={styles.header}>VoxLingo</Text>
+        <Text style={styles.tagline}>Voice Translation</Text>
+      </View>
 
       <ErrorBanner message={error} onDismiss={clearError} />
 
-      <View style={styles.languageBar}>
-        <LanguagePicker
-          selectedCode={sourceLang}
-          onSelect={setSourceLang}
-          label="From"
-        />
-        <TouchableOpacity onPress={handleSwapLanguages} style={styles.swapButton}>
-          <Text style={styles.swapIcon}>🔄</Text>
-        </TouchableOpacity>
-        <LanguagePicker
-          selectedCode={targetLang}
-          onSelect={setTargetLang}
-          label="To"
-        />
+      <View style={styles.languageCard}>
+        <View style={styles.languageBar}>
+          <LanguagePicker
+            selectedCode={sourceLang}
+            onSelect={setSourceLang}
+            label="From"
+          />
+          <TouchableOpacity onPress={handleSwapLanguages} style={styles.swapButton}>
+            <Text style={styles.swapIcon}>⇄</Text>
+          </TouchableOpacity>
+          <LanguagePicker
+            selectedCode={targetLang}
+            onSelect={setTargetLang}
+            label="To"
+          />
+        </View>
       </View>
 
       <FlatList
@@ -71,10 +77,14 @@ export default function TravelScreen() {
         )}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>Tap the mic and start speaking</Text>
+            <Text style={styles.emptyIcon}>🌍</Text>
+            <Text style={styles.emptyTitle}>Ready to translate</Text>
+            <Text style={styles.emptyText}>
+              Tap the microphone and start speaking
+            </Text>
           </View>
         }
-        contentContainerStyle={translations.length === 0 ? styles.emptyContainer : undefined}
+        contentContainerStyle={translations.length === 0 ? styles.emptyContainer : styles.listContent}
       />
 
       <RecordButton
@@ -89,30 +99,56 @@ export default function TravelScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
+  },
+  headerBar: {
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.xl,
+    backgroundColor: colors.background,
   },
   header: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    textAlign: 'center',
-    paddingVertical: 12,
-    color: '#1565c0',
+    color: colors.primary,
+    letterSpacing: -0.5,
+  },
+  tagline: {
+    fontSize: 13,
+    color: colors.textMuted,
+    marginTop: 2,
+    letterSpacing: 0.3,
+  },
+  languageCard: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    ...shadow('sm'),
   },
   languageBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
   },
   swapButton: {
-    paddingHorizontal: 12,
-    paddingTop: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: spacing.sm,
+    marginTop: spacing.lg,
   },
   swapIcon: {
-    fontSize: 24,
+    fontSize: 18,
+    color: colors.primary,
   },
   list: {
     flex: 1,
+  },
+  listContent: {
+    paddingVertical: spacing.sm,
   },
   emptyContainer: {
     flex: 1,
@@ -120,10 +156,22 @@ const styles = StyleSheet.create({
   },
   emptyState: {
     alignItems: 'center',
-    padding: 32,
+    padding: spacing.xxxl,
+  },
+  emptyIcon: {
+    fontSize: 48,
+    marginBottom: spacing.lg,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
   },
   emptyText: {
-    fontSize: 16,
-    color: '#999',
+    fontSize: 15,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
   },
 });

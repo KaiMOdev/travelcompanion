@@ -15,6 +15,7 @@ import { LanguagePicker } from '../../components/LanguagePicker';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import { translateImage } from '../../services/vision';
 import { VisionResponse } from '../../types';
+import { colors, shadow, spacing, radius } from '../../constants/theme';
 
 export default function CameraScreen() {
   const [permission, requestPermission] = useCameraPermissions();
@@ -30,10 +31,12 @@ export default function CameraScreen() {
   // Web fallback
   if (Platform.OS === 'web') {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.containerLight}>
         <View style={styles.centered}>
+          <Text style={styles.emptyIcon}>📷</Text>
+          <Text style={styles.emptyTitle}>Camera not available</Text>
           <Text style={styles.fallbackText}>
-            Camera is not available on web. Use a mobile device.
+            Use a mobile device to translate photos of text.
           </Text>
         </View>
       </SafeAreaView>
@@ -43,9 +46,9 @@ export default function CameraScreen() {
   // Permission loading
   if (!permission) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.containerLight}>
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color="#1565c0" />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -54,10 +57,12 @@ export default function CameraScreen() {
   // Permission denied
   if (!permission.granted) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.containerLight}>
         <View style={styles.centered}>
+          <Text style={styles.emptyIcon}>🔒</Text>
+          <Text style={styles.emptyTitle}>Camera access needed</Text>
           <Text style={styles.fallbackText}>
-            Camera access is needed to translate photos.
+            Grant camera permission to translate photos of menus, signs, and documents.
           </Text>
           <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
             <Text style={styles.permissionButtonText}>Grant Permission</Text>
@@ -116,13 +121,15 @@ export default function CameraScreen() {
   // Result / translating state
   if (photo) {
     return (
-      <SafeAreaView style={styles.container}>
-        <ScrollView style={styles.scrollView}>
-          <Image source={{ uri: photo }} style={styles.photo} resizeMode="contain" />
+      <SafeAreaView style={styles.containerLight}>
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+          <View style={styles.photoCard}>
+            <Image source={{ uri: photo }} style={styles.photo} resizeMode="cover" />
+          </View>
 
           {isTranslating && (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#1565c0" />
+              <ActivityIndicator size="large" color={colors.primary} />
               <Text style={styles.loadingText}>Translating...</Text>
             </View>
           )}
@@ -133,15 +140,21 @@ export default function CameraScreen() {
 
           {result && (
             <View style={styles.resultCard}>
-              <Text style={styles.detectedLabel}>
-                Detected: {result.detectedLanguage}
-              </Text>
+              <View style={styles.detectedBadge}>
+                <Text style={styles.detectedText}>
+                  🌐 {result.detectedLanguage}
+                </Text>
+              </View>
+
               <View style={styles.resultSection}>
-                <Text style={styles.resultLabel}>Original</Text>
+                <Text style={styles.resultLabel}>ORIGINAL</Text>
                 <Text style={styles.originalText}>{result.originalText}</Text>
               </View>
+
+              <View style={styles.resultDivider} />
+
               <View style={styles.resultSection}>
-                <Text style={styles.resultLabel}>Translation</Text>
+                <Text style={styles.resultLabel}>TRANSLATION</Text>
                 <Text style={styles.translatedText}>
                   {result.translatedText || 'No text detected in this image'}
                 </Text>
@@ -151,7 +164,7 @@ export default function CameraScreen() {
         </ScrollView>
 
         <TouchableOpacity style={styles.newPhotoButton} onPress={handleReset}>
-          <Text style={styles.newPhotoText}>📷 New Photo</Text>
+          <Text style={styles.newPhotoText}>📷  Take New Photo</Text>
         </TouchableOpacity>
       </SafeAreaView>
     );
@@ -161,7 +174,7 @@ export default function CameraScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.pickerBar}>
-        <Text style={styles.pickerTitle}>Translate to:</Text>
+        <Text style={styles.pickerTitle}>TRANSLATE TO</Text>
         <View style={styles.pickerWrapper}>
           <LanguagePicker
             selectedCode={targetLang}
@@ -173,9 +186,18 @@ export default function CameraScreen() {
 
       <CameraView ref={cameraRef} style={styles.camera} facing="back" onCameraReady={() => setCameraReady(true)} />
 
-      <TouchableOpacity style={[styles.shutterButton, !cameraReady && { opacity: 0.4 }]} onPress={handleCapture} disabled={!cameraReady}>
-        <Text style={styles.shutterIcon}>📸</Text>
-      </TouchableOpacity>
+      <View style={styles.shutterBar}>
+        <TouchableOpacity
+          style={[styles.shutterButton, !cameraReady && styles.shutterDisabled]}
+          onPress={handleCapture}
+          disabled={!cameraReady}
+          activeOpacity={0.8}
+        >
+          <View style={styles.shutterInner}>
+            <Text style={styles.shutterIcon}>📸</Text>
+          </View>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
@@ -183,125 +205,179 @@ export default function CameraScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: colors.cameraBg,
+  },
+  containerLight: {
+    flex: 1,
+    backgroundColor: colors.background,
   },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 32,
+    padding: spacing.xxxl,
+  },
+  emptyIcon: {
+    fontSize: 48,
+    marginBottom: spacing.lg,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
   },
   fallbackText: {
-    fontSize: 16,
-    color: '#666',
+    fontSize: 15,
+    color: colors.textSecondary,
     textAlign: 'center',
+    lineHeight: 22,
   },
   permissionButton: {
-    marginTop: 16,
-    backgroundColor: '#1565c0',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
+    marginTop: spacing.xl,
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.xxl,
+    paddingVertical: 14,
+    borderRadius: radius.md,
+    ...shadow('md'),
   },
   permissionButtonText: {
-    color: '#fff',
+    color: colors.textOnPrimary,
     fontSize: 16,
     fontWeight: 'bold',
   },
   pickerBar: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 16,
+    backgroundColor: colors.surfaceElevated,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
+    borderBottomColor: colors.divider,
   },
   pickerTitle: {
-    fontSize: 16,
+    fontSize: 11,
     fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 8,
+    color: colors.textMuted,
+    letterSpacing: 1,
+    marginBottom: spacing.sm,
   },
   pickerWrapper: {
-    minHeight: 72,
+    minHeight: 56,
   },
   camera: {
     flex: 1,
   },
-  shutterButton: {
+  shutterBar: {
+    backgroundColor: colors.shutterBg,
+    paddingVertical: spacing.xl,
     alignItems: 'center',
-    paddingVertical: 16,
-    backgroundColor: '#111',
+  },
+  shutterButton: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: colors.surfaceElevated,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: colors.primary,
+  },
+  shutterDisabled: {
+    opacity: 0.4,
+  },
+  shutterInner: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.surfaceElevated,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   shutterIcon: {
-    fontSize: 48,
+    fontSize: 32,
   },
   scrollView: {
     flex: 1,
-    backgroundColor: '#fff',
+  },
+  scrollContent: {
+    paddingBottom: spacing.xl,
+  },
+  photoCard: {
+    margin: spacing.lg,
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+    ...shadow('md'),
   },
   photo: {
     width: '100%',
-    height: 300,
-    backgroundColor: '#eee',
+    height: 280,
+    backgroundColor: colors.surface,
   },
   loadingContainer: {
     alignItems: 'center',
-    padding: 24,
+    padding: spacing.xxl,
   },
   loadingText: {
-    marginTop: 8,
-    fontSize: 16,
-    color: '#666',
+    marginTop: spacing.md,
+    fontSize: 15,
+    color: colors.textSecondary,
   },
   resultCard: {
-    margin: 16,
-    padding: 16,
-    backgroundColor: '#f9f9f9',
-    borderRadius: 12,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
+    marginHorizontal: spacing.lg,
+    padding: spacing.xl,
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: radius.lg,
+    ...shadow('sm'),
   },
-  detectedLabel: {
+  detectedBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.full,
+    marginBottom: spacing.lg,
+  },
+  detectedText: {
     fontSize: 12,
-    color: '#999',
-    marginBottom: 12,
+    fontWeight: '600',
+    color: colors.primary,
   },
   resultSection: {
-    marginBottom: 12,
+    marginVertical: spacing.sm,
   },
   resultLabel: {
-    fontSize: 12,
-    color: '#999',
-    marginBottom: 4,
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: colors.textMuted,
+    letterSpacing: 1,
+    marginBottom: spacing.sm,
+  },
+  resultDivider: {
+    height: 1,
+    backgroundColor: colors.divider,
+    marginVertical: spacing.md,
   },
   originalText: {
     fontSize: 16,
-    color: '#333',
+    color: colors.textPrimary,
+    lineHeight: 24,
   },
   translatedText: {
-    fontSize: 16,
-    color: '#1565c0',
+    fontSize: 18,
+    color: colors.primary,
     fontWeight: 'bold',
+    lineHeight: 26,
   },
   newPhotoButton: {
-    backgroundColor: '#1565c0',
-    padding: 16,
+    backgroundColor: colors.primary,
+    paddingVertical: 16,
     alignItems: 'center',
+    ...shadow('md'),
   },
   newPhotoText: {
-    color: '#fff',
-    fontSize: 18,
+    color: colors.textOnPrimary,
+    fontSize: 16,
     fontWeight: 'bold',
+    letterSpacing: 0.3,
   },
 });

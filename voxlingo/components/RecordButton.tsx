@@ -1,11 +1,12 @@
 import React, { useEffect, useRef } from 'react';
 import {
+  View,
   TouchableOpacity,
   Text,
   StyleSheet,
   Animated,
-  Platform,
 } from 'react-native';
+import { colors, shadow, spacing } from '../constants/theme';
 
 type Props = {
   isRecording: boolean;
@@ -21,13 +22,13 @@ export function RecordButton({ isRecording, isTranslating, onPress }: Props) {
       const pulse = Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, {
-            toValue: 1.15,
-            duration: 600,
+            toValue: 1.12,
+            duration: 700,
             useNativeDriver: false,
           }),
           Animated.timing(pulseAnim, {
             toValue: 1,
-            duration: 600,
+            duration: 700,
             useNativeDriver: false,
           }),
         ]),
@@ -40,49 +41,68 @@ export function RecordButton({ isRecording, isTranslating, onPress }: Props) {
   }, [isRecording, pulseAnim]);
 
   return (
-    <Animated.View style={[styles.wrapper, { transform: [{ scale: pulseAnim }] }]}>
-      <TouchableOpacity
-        style={[
-          styles.button,
-          isRecording && styles.recording,
-        ]}
-        onPress={onPress}
-        activeOpacity={0.7}
-      >
-        <Text style={styles.icon}>{isRecording ? '⏹️' : isTranslating ? '⏳' : '🎙️'}</Text>
-      </TouchableOpacity>
-    </Animated.View>
+    <View style={styles.container}>
+      {isRecording && <View style={styles.ringOuter} />}
+      <Animated.View style={[styles.wrapper, { transform: [{ scale: pulseAnim }] }]}>
+        <TouchableOpacity
+          style={[
+            styles.button,
+            isRecording && styles.recording,
+          ]}
+          onPress={onPress}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.icon}>
+            {isRecording ? '⏹️' : isTranslating ? '⏳' : '🎙️'}
+          </Text>
+        </TouchableOpacity>
+      </Animated.View>
+      <Text style={styles.hint}>
+        {isRecording ? 'Tap to stop' : isTranslating ? 'Translating...' : 'Tap to speak'}
+      </Text>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    alignItems: 'center',
+    paddingVertical: spacing.xl,
+    paddingBottom: spacing.lg,
+    backgroundColor: colors.background,
+  },
   wrapper: {
     alignItems: 'center',
-    paddingVertical: 16,
+  },
+  ringOuter: {
+    position: 'absolute',
+    top: spacing.xl - 6,
+    width: 92,
+    height: 92,
+    borderRadius: 46,
+    borderWidth: 3,
+    borderColor: colors.recording,
+    opacity: 0.3,
   },
   button: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: '#1565c0',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 6,
-      },
-    }),
+    ...shadow('lg'),
   },
   recording: {
-    backgroundColor: '#d32f2f',
+    backgroundColor: colors.recording,
   },
   icon: {
-    fontSize: 32,
+    fontSize: 34,
+  },
+  hint: {
+    marginTop: spacing.sm,
+    fontSize: 13,
+    color: colors.textMuted,
+    letterSpacing: 0.3,
   },
 });

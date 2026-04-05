@@ -6,10 +6,10 @@ import {
   Modal,
   FlatList,
   StyleSheet,
-  Platform,
 } from 'react-native';
 import { LANGUAGES } from '../constants/languages';
 import { getLanguageName } from '../constants/languages';
+import { colors, shadow, spacing, radius } from '../constants/theme';
 
 type Props = {
   selectedCode: string;
@@ -22,14 +22,14 @@ export function LanguagePicker({ selectedCode, onSelect, label }: Props) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>{label}</Text>
+      {label ? <Text style={styles.label}>{label}</Text> : null}
       <TouchableOpacity
         style={styles.button}
         onPress={() => setOpen(true)}
         activeOpacity={0.7}
       >
         <Text style={styles.buttonText}>{getLanguageName(selectedCode)}</Text>
-        <Text style={styles.chevron}>▼</Text>
+        <Text style={styles.chevron}>▾</Text>
       </TouchableOpacity>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
@@ -39,7 +39,11 @@ export function LanguagePicker({ selectedCode, onSelect, label }: Props) {
           onPress={() => setOpen(false)}
         >
           <View style={styles.modal}>
-            <Text style={styles.modalTitle}>{label}</Text>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {label || 'Select Language'}
+              </Text>
+            </View>
             <FlatList
               data={LANGUAGES}
               keyExtractor={(item) => item.code}
@@ -62,6 +66,9 @@ export function LanguagePicker({ selectedCode, onSelect, label }: Props) {
                   >
                     {item.name}
                   </Text>
+                  {item.code === selectedCode && (
+                    <Text style={styles.checkmark}>✓</Text>
+                  )}
                 </TouchableOpacity>
               )}
             />
@@ -77,78 +84,84 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   label: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 4,
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.textMuted,
+    marginBottom: spacing.xs,
     textAlign: 'center',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
   button: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    backgroundColor: '#f9f9f9',
-    paddingHorizontal: 16,
-    paddingVertical: 18,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceElevated,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: 14,
   },
   buttonText: {
-    fontSize: 18,
-    color: '#333',
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textPrimary,
     flex: 1,
   },
   chevron: {
-    fontSize: 14,
-    color: '#999',
-    marginLeft: 8,
+    fontSize: 16,
+    color: colors.textMuted,
+    marginLeft: spacing.sm,
   },
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'center',
-    paddingHorizontal: 32,
+    paddingHorizontal: spacing.xxl,
   },
   modal: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: radius.xl,
     maxHeight: '70%',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.25,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
+    overflow: 'hidden',
+    ...shadow('lg'),
+  },
+  modalHeader: {
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.xl,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.divider,
   },
   modalTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
     textAlign: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
   },
   option: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.xl,
+    paddingVertical: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#eee',
+    borderBottomColor: colors.divider,
   },
   optionSelected: {
-    backgroundColor: '#e3f2fd',
+    backgroundColor: colors.primaryLight,
   },
   optionText: {
-    fontSize: 15,
-    color: '#333',
+    fontSize: 16,
+    color: colors.textPrimary,
+    flex: 1,
   },
   optionTextSelected: {
-    color: '#1565c0',
-    fontWeight: '600',
+    color: colors.primary,
+    fontWeight: 'bold',
+  },
+  checkmark: {
+    fontSize: 16,
+    color: colors.primary,
+    fontWeight: 'bold',
   },
 });

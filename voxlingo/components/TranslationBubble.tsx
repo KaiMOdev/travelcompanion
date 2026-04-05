@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Translation } from '../types';
 import { getLanguageName } from '../constants/languages';
+import { colors, shadow, spacing, radius } from '../constants/theme';
 
 type Props = {
   translation: Translation;
@@ -14,8 +15,10 @@ export function TranslationBubble({ translation, isSpeaking, onReplay }: Props) 
     <View style={styles.container}>
       <View style={styles.sourceRow}>
         <View style={[styles.bubble, styles.sourceBubble]}>
-          <Text style={styles.langLabel}>{getLanguageName(translation.sourceLang)}</Text>
-          <Text style={styles.text}>{translation.originalText}</Text>
+          <Text style={styles.langLabel}>
+            {getLanguageName(translation.sourceLang)}
+          </Text>
+          <Text style={styles.sourceText}>{translation.originalText}</Text>
         </View>
       </View>
       <View style={styles.targetRow}>
@@ -24,10 +27,13 @@ export function TranslationBubble({ translation, isSpeaking, onReplay }: Props) 
           onPress={onReplay}
           activeOpacity={0.7}
         >
-          <Text style={styles.langLabel}>
-            {getLanguageName(translation.targetLang)} {isSpeaking ? '🔊' : '🔈'}
-          </Text>
-          <Text style={[styles.text, styles.targetText]}>
+          <View style={styles.targetHeader}>
+            <Text style={styles.langLabel}>
+              {getLanguageName(translation.targetLang)}
+            </Text>
+            <Text style={styles.speakerIcon}>{isSpeaking ? '🔊' : '🔈'}</Text>
+          </View>
+          <Text style={styles.targetText}>
             {translation.translatedText}
           </Text>
         </TouchableOpacity>
@@ -38,51 +44,60 @@ export function TranslationBubble({ translation, isSpeaking, onReplay }: Props) 
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 8,
-    paddingHorizontal: 16,
+    marginVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
   },
   sourceRow: {
     flexDirection: 'row',
     justifyContent: 'flex-start',
-    marginVertical: 2,
+    marginVertical: spacing.xs,
   },
   targetRow: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    marginVertical: 2,
+    marginVertical: spacing.xs,
   },
   bubble: {
-    padding: 12,
-    borderRadius: 12,
-    maxWidth: '85%',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: radius.lg,
+    maxWidth: '88%',
+    ...shadow('sm'),
   },
   sourceBubble: {
-    backgroundColor: '#f0f0f0',
+    backgroundColor: colors.sourceBubble,
+    borderTopLeftRadius: radius.sm,
   },
   targetBubble: {
-    backgroundColor: '#e3f2fd',
+    backgroundColor: colors.targetBubble,
+    borderTopRightRadius: radius.sm,
+  },
+  targetHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   langLabel: {
-    fontSize: 10,
-    color: '#999',
-    marginBottom: 4,
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: spacing.xs,
   },
-  text: {
+  speakerIcon: {
+    fontSize: 14,
+    marginBottom: spacing.xs,
+  },
+  sourceText: {
     fontSize: 16,
-    color: '#333',
+    color: colors.textPrimary,
+    lineHeight: 22,
   },
   targetText: {
-    color: '#1565c0',
+    fontSize: 16,
+    color: colors.targetText,
+    fontWeight: '600',
+    lineHeight: 22,
   },
 });
