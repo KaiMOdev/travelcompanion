@@ -56,13 +56,16 @@ export function speak(text: string, langCode: string, options?: SpeakOptions): v
 
 export async function stop(): Promise<void> {
   try {
+    const isSpeakingNow = await Speech.isSpeakingAsync();
+    if (!isSpeakingNow) {
+      speaking = false;
+      return;
+    }
     Speech.stop();
+    // Wait for iOS audio session to fully release
+    await new Promise((r) => setTimeout(r, 300));
   } catch {
     // Silently fail
-  }
-  // expo-speech stop is not awaitable; small drain delay for iOS audio session
-  if (speaking) {
-    await new Promise((r) => setTimeout(r, 250));
   }
   speaking = false;
 }
