@@ -37,3 +37,15 @@ export type VisionResponse = {
   originalText: string;
   translatedText: string;
 };
+
+export type {
+  Destination,
+  Phrase,
+  CulturalTip,
+  MenuItem,
+  MenuTranslation,
+  SignTranslation,
+  GeneralTranslation,
+  SmartVisionResponse,
+  EmergencyInfo,
+} from './travel';
