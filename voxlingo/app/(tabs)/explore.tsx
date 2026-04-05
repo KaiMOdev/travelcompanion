@@ -44,6 +44,7 @@ export default function ExploreScreen() {
   const [locationLabel, setLocationLabel] = useState<string | null>(null);
   const [locatingGps, setLocatingGps] = useState(false);
   const [selectedRadius, setSelectedRadius] = useState<number>(10);
+  const [locationMismatch, setLocationMismatch] = useState<string | null>(null);
   const listRef = useRef<FlatList<ExplorePlace>>(null);
 
   const handleLocate = useCallback(async () => {
@@ -52,6 +53,13 @@ export default function ExploreScreen() {
       const loc = await getCurrentLocation();
       if (loc) {
         const city = loc.address.split(',').find((p) => p.trim().length > 2)?.trim() || '';
+        // Check if user's GPS country matches selected destination
+        if (loc.countryCode && destination && loc.countryCode.toUpperCase() !== destination.toUpperCase()) {
+          const destName = getDestination(destination)?.countryName || destination;
+          setLocationMismatch(`You're not in ${destName}. Showing results for ${destName} near your location.`);
+        } else {
+          setLocationMismatch(null);
+        }
         setLocationParams({
           lat: loc.latitude,
           lng: loc.longitude,
@@ -77,6 +85,7 @@ export default function ExploreScreen() {
   const handleClearLocation = useCallback(() => {
     setLocationParams(undefined);
     setLocationLabel(null);
+    setLocationMismatch(null);
   }, []);
 
   const {
@@ -229,6 +238,12 @@ export default function ExploreScreen() {
           </View>
         )}
       </View>
+
+      {locationMismatch && (
+        <View style={styles.mismatchBanner}>
+          <Text style={styles.mismatchText}>🌍 {locationMismatch}</Text>
+        </View>
+      )}
 
       {isLoading && (
         <View style={styles.loadingContainer}>
@@ -443,6 +458,20 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: spacing.xxl,
     paddingVertical: spacing.lg,
+  },
+  mismatchBanner: {
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.sm,
+    padding: spacing.md,
+    backgroundColor: colors.secondaryLight,
+    borderRadius: radius.md,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.secondary,
+  },
+  mismatchText: {
+    ...typography.label,
+    color: colors.textPrimary,
+    lineHeight: 18,
   },
   locationBar: {
     paddingHorizontal: spacing.lg,

@@ -4,6 +4,7 @@ export type LocationInfo = {
   address: string;
   latitude: number;
   longitude: number;
+  countryCode?: string;
 };
 
 export async function requestLocationPermission(): Promise<boolean> {
@@ -37,6 +38,7 @@ export async function getCurrentLocation(): Promise<LocationInfo | null> {
       address: parts.join(', ') || `${location.coords.latitude}, ${location.coords.longitude}`,
       latitude: location.coords.latitude,
       longitude: location.coords.longitude,
+      countryCode: geocode?.isoCountryCode ?? undefined,
     };
   } catch {
     return null;
