@@ -11,12 +11,13 @@ import { colors, shadow, spacing } from '../constants/theme';
 type Props = {
   isRecording: boolean;
   isTranslating: boolean;
-  onPress: () => void;
+  onPressIn: () => void;
+  onPressOut: () => void;
 };
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-export function RecordButton({ isRecording, isTranslating, onPress }: Props) {
+export function RecordButton({ isRecording, isTranslating, onPressIn, onPressOut }: Props) {
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const glowAnim = useRef(new Animated.Value(0.3)).current;
 
@@ -77,7 +78,9 @@ export function RecordButton({ isRecording, isTranslating, onPress }: Props) {
           isTranslating && styles.translating,
           { transform: [{ scale: pulseAnim }] },
         ]}
-        onPress={onPress}
+        onPressIn={isTranslating ? undefined : onPressIn}
+        onPressOut={isTranslating ? undefined : onPressOut}
+        disabled={isTranslating}
         android_ripple={{ color: 'rgba(255,255,255,0.3)', borderless: true }}
       >
         <Text style={styles.icon}>
@@ -85,7 +88,7 @@ export function RecordButton({ isRecording, isTranslating, onPress }: Props) {
         </Text>
       </AnimatedPressable>
       <Text style={[styles.hint, isRecording && styles.hintRecording]}>
-        {isRecording ? 'Tap to stop' : isTranslating ? 'Translating...' : 'Tap to speak'}
+        {isRecording ? 'Release to translate' : isTranslating ? 'Translating...' : 'Hold to speak'}
       </Text>
     </View>
   );

@@ -118,7 +118,7 @@ export default function TravelScreen() {
         <SafeAreaView edges={['top']}>
           <View style={styles.headerContent}>
             <View style={styles.headerLeft}>
-              <Text style={styles.headerTitle}>VoxLingo</Text>
+              <Text style={styles.headerTitle}>WanderVox</Text>
               {destination ? (
                 <TouchableOpacity onPress={() => setShowDestinationPicker(true)}>
                   <Text style={styles.destinationBadge}>

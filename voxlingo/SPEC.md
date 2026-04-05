@@ -1,8 +1,8 @@
-# VoxLingo — Technical Specification
+# WanderVox — Technical Specification
 
 ## 1. Overview
 
-VoxLingo is a real-time voice-to-voice translation app for iOS and Android. It provides three translation modes: travel (voice), camera (OCR), and meeting (live subtitles). Built with Expo (React Native + TypeScript), Node.js backend, and Google Gemini API.
+WanderVox is a real-time voice-to-voice translation app for iOS and Android. It provides three translation modes: travel (voice), camera (OCR), and meeting (live subtitles). Built with Expo (React Native + TypeScript), Node.js backend, and Google Gemini API.
 
 **Target:** Free at launch, under 100 beta users. Both platforms simultaneously.
 

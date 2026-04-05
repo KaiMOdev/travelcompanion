@@ -2,8 +2,8 @@ import React, { createContext, useContext, useState, useCallback, useEffect } fr
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getDestination } from '../constants/destinations';
 
-const STORAGE_KEY = 'voxlingo_destination';
-const HOTEL_STORAGE_KEY = 'voxlingo_hotel_address';
+const STORAGE_KEY = 'wandervox_destination';
+const HOTEL_STORAGE_KEY = 'wandervox_hotel_address';
 
 type DestinationContextValue = {
   destination: string | null;

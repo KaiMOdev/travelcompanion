@@ -1,5 +1,5 @@
 import { TranslateResponse, TranslateErrorResponse } from '../types';
-import { API_URL } from './api';
+import { API_URL, apiHeaders } from './api';
 
 export async function translateAudio(
   audio: string,
@@ -12,7 +12,7 @@ export async function translateAudio(
   try {
     response = await fetch(`${API_URL}/translate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: apiHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ audio, sourceLang, targetLang, mimeType }),
     });
   } catch {
@@ -39,7 +39,7 @@ export async function translateAudioStream(
   try {
     response = await fetch(`${API_URL}/translate/stream`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: apiHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ audio, sourceLang, targetLang, mimeType }),
     });
   } catch {

@@ -1,8 +1,8 @@
-# VoxLingo — Real-time Voice Translation App (MVP)
+# WanderVox — Real-time Voice Translation App (MVP)
 
 ## Project overview
 
-VoxLingo is a voice translation app. Tap to record, get the transcription and translation displayed as chat bubbles. Built with Expo (React Native + TypeScript) and powered by Google Gemini REST API via a thin backend proxy.
+WanderVox is a voice translation app. Tap to record, get the transcription and translation displayed as chat bubbles. Built with Expo (React Native + TypeScript) and powered by Google Gemini REST API via a thin backend proxy.
 
 ## Tech stack
 

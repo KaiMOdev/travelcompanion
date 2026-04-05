@@ -134,7 +134,7 @@ export default function CultureScreen() {
         <View style={styles.headerBlock}>
           <SafeAreaView edges={['top']}>
             <View style={styles.headerContent}>
-              <Text style={styles.headerTitle}>VoxLingo</Text>
+              <Text style={styles.headerTitle}>WanderVox</Text>
               <Text style={styles.headerSub}>Culture Guide</Text>
             </View>
           </SafeAreaView>
@@ -167,7 +167,7 @@ export default function CultureScreen() {
         <SafeAreaView edges={['top']}>
           <View style={styles.headerContent}>
             <View>
-              <Text style={styles.headerTitle}>VoxLingo</Text>
+              <Text style={styles.headerTitle}>WanderVox</Text>
             </View>
             <TouchableOpacity onPress={() => setShowPicker(true)}>
               <Text style={styles.destinationBadge}>

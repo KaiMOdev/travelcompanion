@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Modal, View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { getCurrentLocation, LocationInfo } from '../services/location';
 import { speak } from '../services/speech';
-import { API_URL } from '../services/api';
+import { API_URL, apiHeaders } from '../services/api';
 import { colors, spacing, radius, typography } from '../constants/theme';
 
 type Props = {
@@ -16,7 +16,7 @@ async function translateText(text: string, targetLang: string): Promise<string> 
   try {
     const response = await fetch(`${API_URL}/translate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: apiHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({
         audio: '',
         sourceLang: 'en',
@@ -66,7 +66,7 @@ export function TaxiCard({ visible, hotelAddress, targetLang, onClose }: Props) 
       try {
         const response = await fetch(`${API_URL}/translate/text`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: apiHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({
             texts: [loc.address, hotelAddress || ''].filter(Boolean),
             targetLang,

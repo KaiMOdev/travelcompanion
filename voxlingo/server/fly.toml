@@ -1,0 +1,32 @@
+# fly.toml app configuration file generated for wandervox-server on 2026-04-05T18:53:43+02:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'wandervox-server'
+primary_region = 'ams'
+
+[build]
+
+[env]
+  NODE_ENV = 'production'
+  PORT = '3001'
+
+[http_service]
+  internal_port = 3001
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.checks]
+    [http_service.checks.health]
+      interval = '15s'
+      timeout = '5s'
+      grace_period = '10s'
+      method = 'GET'
+      path = '/health'
+
+[[vm]]
+  size = 'shared-cpu-1x'
+  memory = '512mb'

@@ -6,7 +6,7 @@ import { translateAudio, translateAudioStream } from '../services/translate';
 import { speak, stop } from '../services/speech';
 import { Translation } from '../types';
 
-const HISTORY_KEY = 'voxlingo_translation_history';
+const HISTORY_KEY = 'wandervox_translation_history';
 const MAX_HISTORY = 100;
 
 async function loadHistory(): Promise<Translation[]> {
