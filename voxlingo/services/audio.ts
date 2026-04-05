@@ -12,6 +12,12 @@ async function startNativeRecording(): Promise<void> {
     throw new Error('Microphone permission is required to record audio');
   }
 
+  // Reset audio mode before recording — fixes "streaming not supported
+  // while recording" error when TTS playback left the session in playback mode
+  await Audio.setAudioModeAsync({
+    allowsRecordingIOS: false,
+    playsInSilentModeIOS: true,
+  });
   await Audio.setAudioModeAsync({
     allowsRecordingIOS: true,
     playsInSilentModeIOS: true,
@@ -29,6 +35,11 @@ async function stopNativeRecording(): Promise<string> {
   }
 
   await recording.stopAndUnloadAsync();
+  // Reset audio mode so TTS/playback works after recording
+  await Audio.setAudioModeAsync({
+    allowsRecordingIOS: false,
+    playsInSilentModeIOS: true,
+  });
   const uri = recording.getURI();
   recording = null;
 
