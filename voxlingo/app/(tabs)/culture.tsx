@@ -201,12 +201,14 @@ export default function CultureScreen() {
         <FlatList
           ref={phrasesListRef}
           data={phrases}
+          numColumns={2}
           keyExtractor={(item: Phrase) => item.id}
           renderItem={({ item }) => (
-            <View style={styles.phraseCardWrapper}>
+            <View style={styles.phraseGridItem}>
               <PhraseCard phrase={item} onSpeak={handleSpeak} />
             </View>
           )}
+          columnWrapperStyle={styles.phraseRow}
           contentContainerStyle={styles.listContent}
           ListFooterComponent={
             phrasesTotalPages > 1 ? (
@@ -416,9 +418,13 @@ const styles = StyleSheet.create({
   listContent: {
     paddingVertical: spacing.md,
   },
-  phraseCardWrapper: {
-    paddingHorizontal: spacing.lg,
-    marginBottom: spacing.md,
+  phraseRow: {
+    paddingHorizontal: spacing.md,
+    gap: spacing.sm,
+  },
+  phraseGridItem: {
+    flex: 1,
+    marginBottom: spacing.sm,
   },
   tipCardWrapper: {
     paddingHorizontal: spacing.lg,
