@@ -1047,7 +1047,8 @@ Return JSON array ONLY: [{ "name": "...", "localName": "...", "description": "..
     // Location-aware: optional lat, lng, radius (km), city
     const lat = parseFloat(req.query.lat as string);
     const lng = parseFloat(req.query.lng as string);
-    const radius = parseInt(req.query.radius as string, 10) || 10;
+    const radiusRaw = req.query.radius !== undefined ? parseInt(req.query.radius as string, 10) : 10;
+    const radius = isNaN(radiusRaw) ? 10 : radiusRaw;
     const city = (req.query.city as string) || '';
     const hasLocation = !isNaN(lat) && !isNaN(lng);
 
@@ -1072,10 +1073,11 @@ Return JSON array ONLY: [{ "name": "...", "localName": "...", "description": "..
     let basePrompt = categoryDef.prompt(langName, `a ${langName}-speaking country (${code})`, code);
 
     // Inject location context into prompt
+    const radiusClause = radius > 0 ? ` Focus on places within ${radius}km of this location.` : '';
     if (hasLocation && city) {
-      basePrompt = `The user is currently near ${city} (${lat.toFixed(4)}, ${lng.toFixed(4)}). Focus on places within ${radius}km of this location.\n\n${basePrompt}`;
+      basePrompt = `The user is currently near ${city} (${lat.toFixed(4)}, ${lng.toFixed(4)}).${radiusClause}\n\n${basePrompt}`;
     } else if (hasLocation) {
-      basePrompt = `The user is at coordinates (${lat.toFixed(4)}, ${lng.toFixed(4)}). Focus on places within ${radius}km of this location.\n\n${basePrompt}`;
+      basePrompt = `The user is at coordinates (${lat.toFixed(4)}, ${lng.toFixed(4)}).${radiusClause}\n\n${basePrompt}`;
     } else if (city) {
       basePrompt = `Focus on places in or near ${city}.\n\n${basePrompt}`;
     }

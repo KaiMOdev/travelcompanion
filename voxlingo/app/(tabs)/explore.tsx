@@ -60,8 +60,8 @@ export default function ExploreScreen() {
         });
         setLocationLabel(city || `${loc.latitude.toFixed(2)}, ${loc.longitude.toFixed(2)}`);
       }
-    } catch {
-      // Location permission denied or unavailable
+    } catch (e) {
+      console.warn('Location unavailable:', e);
     } finally {
       setLocatingGps(false);
     }

@@ -19,7 +19,7 @@ export async function fetchExplorePlaces(
     params.set('lat', String(location.lat));
     params.set('lng', String(location.lng));
   }
-  if (location?.radius) params.set('radius', String(location.radius));
+  if (location?.radius !== undefined) params.set('radius', String(location.radius));
   if (location?.city) params.set('city', location.city);
 
   const qs = params.toString();
