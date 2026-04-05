@@ -29,7 +29,7 @@ import { getDestination } from '../../constants/destinations';
 export default function TravelScreen() {
   const [sourceLang, setSourceLang] = useState('en');
   const [targetLang, setTargetLang] = useState('es');
-  const { isRecording, isTranslating, translations, error, speakingId, startRecord, stopRecord, replay, clearError } =
+  const { isRecording, isTranslating, translations, error, speakingId, startRecord, stopRecord, replay, clearError, clearTranslations } =
     useTranslation();
   const { destination, phrases, tips, isLoading: destLoading, error: destError, setDestination, loadSaved, getLanguageCode } =
     useDestination();
@@ -56,6 +56,7 @@ export default function TravelScreen() {
   const handleSwapLanguages = () => {
     setSourceLang(targetLang);
     setTargetLang(sourceLang);
+    clearTranslations();
   };
 
   const handlePressIn = () => {
@@ -113,7 +114,7 @@ export default function TravelScreen() {
           <View style={styles.languageBar}>
             <LanguagePicker
               selectedCode={sourceLang}
-              onSelect={setSourceLang}
+              onSelect={(code) => { setSourceLang(code); clearTranslations(); }}
               label="FROM"
             />
             <TouchableOpacity onPress={handleSwapLanguages} style={styles.swapButton}>
@@ -124,6 +125,7 @@ export default function TravelScreen() {
               onSelect={(code) => {
                 setTargetLang(code);
                 setTargetLangManuallySet(true);
+                clearTranslations();
               }}
               label="TO"
             />

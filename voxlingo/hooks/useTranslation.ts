@@ -147,6 +147,7 @@ export function useTranslation() {
   );
 
   const clearError = useCallback(() => setError(null), []);
+  const clearTranslations = useCallback(() => setTranslations([]), []);
 
   return {
     isRecording,
@@ -158,5 +159,6 @@ export function useTranslation() {
     stopRecord,
     replay,
     clearError,
+    clearTranslations,
   };
 }
