@@ -26,3 +26,14 @@ export type Language = {
   code: string;
   name: string;
 };
+
+export type VisionRequest = {
+  image: string;
+  targetLang: string;
+};
+
+export type VisionResponse = {
+  detectedLanguage: string;
+  originalText: string;
+  translatedText: string;
+};
