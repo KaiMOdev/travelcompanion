@@ -251,6 +251,9 @@ export default function ExploreScreen() {
             <Text style={[styles.gpsLabel, locationLabel && styles.gpsLabelActive]}>
               {locationLabel || 'My location'}
             </Text>
+            {isLoading && locationLabel ? (
+              <ActivityIndicator size="small" color={colors.primary} style={{ marginLeft: 6 }} />
+            ) : null}
           </TouchableOpacity>
           <View style={styles.cityInputWrapper}>
             <TextInput
@@ -304,7 +307,9 @@ export default function ExploreScreen() {
       {isLoading && (
         <View style={styles.loadingContainer}>
           <ActivityIndicator color={colors.primary} />
-          <Text style={styles.loadingText}>Discovering places...</Text>
+          <Text style={styles.loadingText}>
+            {locationLabel ? `Discovering places in ${locationLabel}...` : 'Discovering places...'}
+          </Text>
         </View>
       )}
 
