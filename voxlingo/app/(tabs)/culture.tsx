@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -42,6 +42,7 @@ export default function CultureScreen() {
   const { destination, setDestination, getLanguageCode, isLoaded } = useDestinationContext();
   const [activeCategory, setActiveCategory] = useState<CultureCategory>('phrases');
   const [showPicker, setShowPicker] = useState(false);
+  const cultureListRef = useRef<FlatList<CultureEntry>>(null);
 
   const cultureCategory = CULTURE_API_CATEGORIES.has(activeCategory) ? activeCategory : null;
   const { phrases, isLoading: phrasesLoading, error: phrasesError } = usePhrases(
@@ -50,15 +51,31 @@ export default function CultureScreen() {
   const { tips, isLoading: tipsLoading, error: tipsError } = useTips(
     activeCategory === 'tips' ? destination : null
   );
-  const { entries, isLoading: cultureLoading, error: cultureError } = useCulture(
-    destination,
-    cultureCategory,
-  );
+  const {
+    entries,
+    page,
+    totalPages,
+    total,
+    nextPage,
+    prevPage,
+    isLoading: cultureLoading,
+    error: cultureError,
+  } = useCulture(destination, cultureCategory);
 
   const langCode = getLanguageCode();
 
   const handleSpeak = (text: string) => {
     if (langCode) speak(text, langCode);
+  };
+
+  const handleNextPage = () => {
+    nextPage();
+    cultureListRef.current?.scrollToOffset({ offset: 0, animated: true });
+  };
+
+  const handlePrevPage = () => {
+    prevPage();
+    cultureListRef.current?.scrollToOffset({ offset: 0, animated: true });
   };
 
   const activeError = activeCategory === 'phrases' ? phrasesError
@@ -166,12 +183,36 @@ export default function CultureScreen() {
 
       {!isLoading && !activeError && CULTURE_API_CATEGORIES.has(activeCategory) && (
         <FlatList
+          ref={cultureListRef}
           data={entries}
           keyExtractor={(item: CultureEntry) => item.id}
           renderItem={({ item }) => (
             <CultureCard entry={item} onSpeak={item.speakable ? handleSpeak : undefined} />
           )}
           contentContainerStyle={styles.listContent}
+          ListFooterComponent={
+            totalPages > 1 ? (
+              <View style={styles.pagination}>
+                <TouchableOpacity
+                  style={[styles.pageButton, page <= 1 && styles.pageButtonDisabled]}
+                  onPress={handlePrevPage}
+                  disabled={page <= 1}
+                >
+                  <Text style={[styles.pageButtonText, page <= 1 && styles.pageButtonTextDisabled]}>Previous</Text>
+                </TouchableOpacity>
+                <Text style={styles.pageInfo}>
+                  {(page - 1) * 10 + 1}–{Math.min(page * 10, total)} of {total}
+                </Text>
+                <TouchableOpacity
+                  style={[styles.pageButton, page >= totalPages && styles.pageButtonDisabled]}
+                  onPress={handleNextPage}
+                  disabled={page >= totalPages}
+                >
+                  <Text style={[styles.pageButtonText, page >= totalPages && styles.pageButtonTextDisabled]}>Next</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null
+          }
         />
       )}
 
@@ -288,5 +329,34 @@ const styles = StyleSheet.create({
   tipsContainer: {
     flex: 1,
     paddingTop: spacing.md,
+  },
+  pagination: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
+    marginTop: spacing.sm,
+  },
+  pageButton: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.primary,
+  },
+  pageButtonDisabled: {
+    backgroundColor: colors.surfaceAlt,
+  },
+  pageButtonText: {
+    color: colors.textOnPrimary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  pageButtonTextDisabled: {
+    color: colors.textMuted,
+  },
+  pageInfo: {
+    ...typography.label,
+    color: colors.textSecondary,
   },
 });
