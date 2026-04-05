@@ -33,7 +33,7 @@ export default function TravelScreen() {
   const [targetLang, setTargetLang] = useState('es');
   const { isRecording, isTranslating, translations, error, speakingId, startRecord, stopRecord, replay, clearError, clearTranslations } =
     useTranslation();
-  const { destination, phrases, tips, isLoading: destLoading, error: destError, setDestination, hotelAddress, setHotelAddress, loadSaved, getLanguageCode } =
+  const { destination, phrases, tips, isLoading: destLoading, error: destError, setDestination, hotelAddress, setHotelAddress, saveHotelAddress, loadSaved, getLanguageCode } =
     useDestination();
   const flatListRef = useRef<FlatList>(null);
   const [showCardItem, setShowCardItem] = useState<Translation | null>(null);
@@ -48,7 +48,18 @@ export default function TravelScreen() {
   }, []);
 
   // Fresh start when destination changes — reset language, clear translations
+  const hasInitialized = useRef(false);
   useEffect(() => {
+    if (!hasInitialized.current) {
+      hasInitialized.current = true;
+      // Don't clear on initial mount (restoring saved destination)
+      const langCode = getLanguageCode();
+      if (langCode && !targetLangManuallySet) {
+        setTargetLang(langCode);
+      }
+      return;
+    }
+    // User actively changed destination — full reset
     const langCode = getLanguageCode();
     if (langCode) {
       setTargetLang(langCode);
@@ -82,6 +93,7 @@ export default function TravelScreen() {
   const handleMePressOut = () => {
     if (conversationLangsRef.current) {
       stopRecord(conversationLangsRef.current.source, conversationLangsRef.current.target);
+      conversationLangsRef.current = null;
     }
   };
 
@@ -93,6 +105,7 @@ export default function TravelScreen() {
   const handleThemPressOut = () => {
     if (conversationLangsRef.current) {
       stopRecord(conversationLangsRef.current.source, conversationLangsRef.current.target);
+      conversationLangsRef.current = null;
     }
   };
 
@@ -190,6 +203,7 @@ export default function TravelScreen() {
                 placeholderTextColor={colors.textMuted}
                 value={hotelAddress}
                 onChangeText={setHotelAddress}
+                onBlur={saveHotelAddress}
                 multiline
               />
             </View>

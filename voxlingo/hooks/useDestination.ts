@@ -36,10 +36,17 @@ export function useDestination() {
     }
   }, []);
 
-  const setHotelAddress = useCallback(async (address: string) => {
+  const setHotelAddress = useCallback((address: string) => {
     setHotelAddressState(address);
-    await AsyncStorage.setItem(HOTEL_STORAGE_KEY, address);
   }, []);
+
+  const saveHotelAddress = useCallback(async () => {
+    try {
+      await AsyncStorage.setItem(HOTEL_STORAGE_KEY, hotelAddress);
+    } catch {
+      // Non-critical — in-memory value still works
+    }
+  }, [hotelAddress]);
 
   const loadSaved = useCallback(async () => {
     try {
@@ -68,6 +75,7 @@ export function useDestination() {
     setDestination,
     hotelAddress,
     setHotelAddress,
+    saveHotelAddress,
     loadSaved,
     getLanguageCode,
   };
