@@ -161,10 +161,11 @@ export default function CameraScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.pickerBar}>
+        <Text style={styles.pickerTitle}>Translate to:</Text>
         <LanguagePicker
           selectedCode={targetLang}
           onSelect={setTargetLang}
-          label="Translate to"
+          label=""
         />
       </View>
 
@@ -209,7 +210,15 @@ const styles = StyleSheet.create({
   pickerBar: {
     backgroundColor: '#fff',
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+  },
+  pickerTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 4,
   },
   camera: {
     flex: 1,
