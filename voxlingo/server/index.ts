@@ -278,6 +278,12 @@ Return JSON only. No markdown wrapping.`;
 
       const parsed = JSON.parse(jsonMatch[0]);
 
+      // Validate detectedLanguage for all content types
+      if (!parsed.detectedLanguage) {
+        res.status(500).json({ error: 'Missing detectedLanguage in vision response' });
+        return;
+      }
+
       // Validate based on content type
       if (parsed.contentType === 'menu') {
         if (!parsed.items || !Array.isArray(parsed.items)) {

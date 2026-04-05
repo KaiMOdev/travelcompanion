@@ -112,18 +112,19 @@ export default function CameraScreen() {
         base64: true,
         quality: 0.7,
       });
-      if (result.canceled || !result.assets[0]?.base64) return;
+      const asset = result.assets?.[0];
+      if (result.canceled || !asset?.base64) return;
 
-      const asset = result.assets[0];
       captureId.current += 1;
       const thisCapture = captureId.current;
+      const base64 = asset.base64;
       setPhoto(asset.uri);
       setResult(null);
       setError(null);
       setIsTranslating(true);
 
       try {
-        const visionResult = await translateImageSmart(asset.base64!, targetLang);
+        const visionResult = await translateImageSmart(base64, targetLang);
         if (captureId.current !== thisCapture) return;
         setResult(visionResult);
       } catch (err: unknown) {

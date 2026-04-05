@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, View, Text, TouchableOpacity, Linking, StyleSheet } from 'react-native';
+import { Modal, View, Text, TouchableOpacity, Linking, Alert, StyleSheet } from 'react-native';
 import { EmergencyInfo } from '../types';
 import { colors, spacing, radius, typography } from '../constants/theme';
 
@@ -11,8 +11,14 @@ type Props = {
 };
 
 export function EmergencyCard({ visible, info, countryName, onClose }: Props) {
-  const callNumber = (number: string) => {
-    Linking.openURL(`tel:${number}`);
+  const callNumber = async (number: string) => {
+    const url = `tel:${number}`;
+    const supported = await Linking.canOpenURL(url);
+    if (supported) {
+      await Linking.openURL(url);
+    } else {
+      Alert.alert('Cannot make call', `Dial ${number} manually.`);
+    }
   };
 
   return (

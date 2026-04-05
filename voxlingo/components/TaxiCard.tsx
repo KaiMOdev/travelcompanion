@@ -24,6 +24,7 @@ export function TaxiCard({ visible, hotelAddress, hotelAddressLocal, onClose }: 
   const loadLocation = async () => {
     setIsLoading(true);
     setError(null);
+    setLocation(null);
     const loc = await getCurrentLocation();
     if (loc) {
       setLocation(loc);

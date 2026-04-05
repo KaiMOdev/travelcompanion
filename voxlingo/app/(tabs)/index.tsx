@@ -31,11 +31,12 @@ export default function TravelScreen() {
   const [targetLang, setTargetLang] = useState('es');
   const { isRecording, isTranslating, translations, error, speakingId, startRecord, stopRecord, replay, clearError } =
     useTranslation();
-  const { destination, phrases, tips, isLoading: destLoading, setDestination, loadSaved, getLanguageCode } =
+  const { destination, phrases, tips, isLoading: destLoading, error: destError, setDestination, loadSaved, getLanguageCode } =
     useDestination();
   const flatListRef = useRef<FlatList>(null);
   const [showCardItem, setShowCardItem] = useState<Translation | null>(null);
   const [slowSpeech, setSlowSpeech] = useState(getSlowMode());
+  const [targetLangManuallySet, setTargetLangManuallySet] = useState(false);
   const [showDestinationPicker, setShowDestinationPicker] = useState(false);
   const [showEmergency, setShowEmergency] = useState(false);
   const [showTaxi, setShowTaxi] = useState(false);
@@ -44,10 +45,10 @@ export default function TravelScreen() {
     loadSaved();
   }, []);
 
-  // Auto-set target language when destination changes
+  // Auto-set target language when destination changes (unless user manually changed it)
   useEffect(() => {
     const langCode = getLanguageCode();
-    if (langCode && langCode !== targetLang) {
+    if (langCode && !targetLangManuallySet) {
       setTargetLang(langCode);
     }
   }, [destination]);
@@ -106,7 +107,7 @@ export default function TravelScreen() {
       </View>
 
       <View style={styles.body}>
-        <ErrorBanner message={error} onDismiss={clearError} />
+        <ErrorBanner message={error || destError} onDismiss={clearError} />
 
         <View style={styles.languageCard}>
           <View style={styles.languageBar}>
@@ -120,7 +121,10 @@ export default function TravelScreen() {
             </TouchableOpacity>
             <LanguagePicker
               selectedCode={targetLang}
-              onSelect={setTargetLang}
+              onSelect={(code) => {
+                setTargetLang(code);
+                setTargetLangManuallySet(true);
+              }}
               label="TO"
             />
           </View>
