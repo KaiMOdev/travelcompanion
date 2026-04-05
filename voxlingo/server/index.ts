@@ -2,6 +2,8 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
+import fs from 'fs';
+import path from 'path';
 
 dotenv.config();
 
@@ -31,7 +33,7 @@ const COUNTRY_LANGS: Record<string, string> = {
 // Simple in-memory cache for destination content
 const phraseCache = new Map<string, { data: unknown[]; timestamp: number }>();
 const tipCache = new Map<string, { data: unknown[]; timestamp: number }>();
-const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+const CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 export function createApp() {
   const app = express();
@@ -41,6 +43,49 @@ export function createApp() {
 
   const apiKey = process.env.GEMINI_API_KEY || '';
   const ai = new GoogleGenAI({ apiKey });
+
+  // --- Culture cache (in-memory + file-based) ---
+  const cultureCache = new Map<string, { data: unknown[]; timestamp: number }>();
+
+  const CACHE_DIR = path.join(__dirname, 'cache');
+  if (!fs.existsSync(CACHE_DIR)) {
+    fs.mkdirSync(CACHE_DIR, { recursive: true });
+  }
+
+  function readCacheFile(cacheKey: string): { data: unknown[]; timestamp: number } | null {
+    const filePath = path.join(CACHE_DIR, `${cacheKey}.json`);
+    try {
+      if (!fs.existsSync(filePath)) return null;
+      const raw = fs.readFileSync(filePath, 'utf-8');
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+
+  function writeCacheFile(cacheKey: string, data: unknown[]): void {
+    const filePath = path.join(CACHE_DIR, `${cacheKey}.json`);
+    try {
+      fs.writeFileSync(filePath, JSON.stringify({ timestamp: Date.now(), data }, null, 2));
+    } catch {
+      // Non-critical — in-memory cache still works
+    }
+  }
+
+  // Load existing cache files on startup
+  try {
+    const files = fs.readdirSync(CACHE_DIR).filter(f => f.endsWith('.json'));
+    for (const file of files) {
+      const cacheKey = file.replace('.json', '');
+      const cached = readCacheFile(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+        cultureCache.set(cacheKey, cached);
+      }
+    }
+    if (files.length > 0) console.log(`Loaded ${files.length} culture cache files`);
+  } catch {
+    // Cache dir may not exist yet
+  }
 
   app.post('/translate', async (req: Request, res: Response) => {
     const { audio, sourceLang, targetLang, mimeType } = req.body;
@@ -477,8 +522,8 @@ Return JSON array only: [{ "id": "1", "category": "...", "title": "...", "body":
 
   const CULTURE_CATEGORIES: Record<string, { count: number; prompt: (lang: string, country: string) => string }> = {
     'dos-donts': {
-      count: 8,
-      prompt: (lang, country) => `Generate 8 do's and don'ts for tourists visiting ${country} (${lang}-speaking).
+      count: 30,
+      prompt: (lang, country) => `Generate 30 do's and don'ts for tourists visiting ${country} (${lang}-speaking).
 
 For each item, provide:
 - id: unique string (e.g. "1", "2")
@@ -493,10 +538,10 @@ Focus on practical, non-obvious advice. Avoid stereotypes.
 Return JSON array ONLY: [{ "id": "1", "title": "...", "body": "...", "speakable": null, "romanized": null }]`,
     },
     'gestures': {
-      count: 6,
-      prompt: (lang, country) => `Generate 6 body language and gesture tips for tourists visiting ${country} (${lang}-speaking).
+      count: 30,
+      prompt: (lang, country) => `Generate 30 body language and gesture tips for tourists visiting ${country} (${lang}-speaking).
 
-Cover: greetings (handshake/bow/etc), hand signals, eye contact, personal space, pointing, beckoning.
+Cover greetings, hand signals, eye contact, personal space, pointing, beckoning, head movements, facial expressions, sitting posture, and more.
 
 For each item:
 - id: unique string
@@ -509,10 +554,10 @@ For each item:
 Return JSON array ONLY: [{ "id": "1", "title": "...", "body": "...", "speakable": null, "romanized": null }]`,
     },
     'food': {
-      count: 8,
-      prompt: (lang, country) => `Generate 8 food guide entries for tourists visiting ${country} (${lang}-speaking).
+      count: 30,
+      prompt: (lang, country) => `Generate 30 food guide entries for tourists visiting ${country} (${lang}-speaking).
 
-Include: 5 must-try dishes, 2 eating etiquette tips, 1 dietary vocabulary entry.
+Include must-try dishes, eating etiquette tips, dietary vocabulary, street food, regional specialties, breakfast items, desserts, and drinks.
 
 For each item:
 - id: unique string
@@ -525,10 +570,10 @@ For each item:
 Return JSON array ONLY: [{ "id": "1", "title": "...", "body": "...", "speakable": "...", "romanized": "..." }]`,
     },
     'tipping': {
-      count: 5,
-      prompt: (lang, country) => `Generate 5 tipping and payment custom entries for tourists visiting ${country}.
+      count: 30,
+      prompt: (lang, country) => `Generate 30 tipping and payment custom entries for tourists visiting ${country}.
 
-Cover: restaurants, taxis, hotels/porters, cash vs card norms, service charges or tax.
+Cover all tipping scenarios: restaurants, cafes, bars, taxis, hotels, spas, tours, deliveries, hairdressers, and more.
 
 For each item:
 - id: unique string
@@ -541,10 +586,10 @@ For each item:
 Return JSON array ONLY: [{ "id": "1", "title": "...", "body": "...", "speakable": null, "romanized": null }]`,
     },
     'sacred-sites': {
-      count: 5,
-      prompt: (lang, country) => `Generate 5 religious and sacred site etiquette entries for tourists visiting ${country}.
+      count: 30,
+      prompt: (lang, country) => `Generate 30 religious and sacred site etiquette entries for tourists visiting ${country}.
 
-Cover: dress code, shoes on/off rules, photography rules, expected behavior, offerings or donations.
+Cover temples, churches, mosques, shrines, cemeteries, monuments, and other sacred or culturally significant sites.
 
 For each item:
 - id: unique string
@@ -572,8 +617,6 @@ Return JSON array ONLY: [{ "id": "1", "title": "1 — One", "body": "...", "spea
     },
   };
 
-  const cultureCache = new Map<string, { data: unknown[]; timestamp: number }>();
-
   app.get('/destination/:code/culture/:category', async (req: Request, res: Response) => {
     const code = (req.params.code as string).toUpperCase();
     const category = req.params.category as string;
@@ -590,10 +633,18 @@ Return JSON array ONLY: [{ "id": "1", "title": "1 — One", "body": "...", "spea
       return;
     }
 
-    const cacheKey = `${code}:${category}`;
-    const cached = cultureCache.get(cacheKey);
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-      res.json(cached.data);
+    const cacheKey = `${code}-${category}`;
+    // Check in-memory cache first
+    const memoryCached = cultureCache.get(cacheKey);
+    if (memoryCached && Date.now() - memoryCached.timestamp < CACHE_TTL) {
+      res.json(memoryCached.data);
+      return;
+    }
+    // Check file cache
+    const fileCached = readCacheFile(cacheKey);
+    if (fileCached && Date.now() - fileCached.timestamp < CACHE_TTL) {
+      cultureCache.set(cacheKey, fileCached);
+      res.json(fileCached.data);
       return;
     }
 
@@ -633,7 +684,9 @@ Return JSON array ONLY: [{ "id": "1", "title": "1 — One", "body": "...", "spea
         category,
       }));
 
-      cultureCache.set(cacheKey, { data: enriched, timestamp: Date.now() });
+      const cacheEntry = { data: enriched, timestamp: Date.now() };
+      cultureCache.set(cacheKey, cacheEntry);
+      writeCacheFile(cacheKey, enriched);
       res.json(enriched);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to generate culture content';
