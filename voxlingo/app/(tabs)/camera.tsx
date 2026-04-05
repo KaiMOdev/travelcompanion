@@ -18,7 +18,7 @@ import { VisionResponse } from '../../types';
 
 export default function CameraScreen() {
   const [permission, requestPermission] = useCameraPermissions();
-  const [targetLang, setTargetLang] = useState('en');
+  const [targetLang, setTargetLang] = useState('nl');
   const [photo, setPhoto] = useState<string | null>(null);
   const [isTranslating, setIsTranslating] = useState(false);
   const [result, setResult] = useState<VisionResponse | null>(null);
@@ -156,17 +156,15 @@ export default function CameraScreen() {
   // Viewfinder state
   return (
     <SafeAreaView style={styles.container}>
-      <CameraView ref={cameraRef} style={styles.camera} facing="back">
-        <View style={styles.cameraOverlay}>
-          <View style={styles.languageOverlay}>
-            <LanguagePicker
-              selectedCode={targetLang}
-              onSelect={setTargetLang}
-              label="Translate to"
-            />
-          </View>
-        </View>
-      </CameraView>
+      <View style={styles.pickerBar}>
+        <LanguagePicker
+          selectedCode={targetLang}
+          onSelect={setTargetLang}
+          label="Translate to"
+        />
+      </View>
+
+      <CameraView ref={cameraRef} style={styles.camera} facing="back" />
 
       <TouchableOpacity style={styles.shutterButton} onPress={handleCapture}>
         <Text style={styles.shutterIcon}>📸</Text>
@@ -204,18 +202,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
+  pickerBar: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
   camera: {
     flex: 1,
-  },
-  cameraOverlay: {
-    flex: 1,
-    justifyContent: 'flex-start',
-  },
-  languageOverlay: {
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    margin: 16,
-    padding: 8,
-    borderRadius: 12,
   },
   shutterButton: {
     alignItems: 'center',
