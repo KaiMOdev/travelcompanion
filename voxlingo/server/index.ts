@@ -963,106 +963,181 @@ Return JSON array ONLY: [{ "id": "1", "title": "1 — One", "body": "...", "spea
 
   // --- Explore (AI Local Guide) ---
 
-  // Shared output schema for all explore prompts
-  function exploreOutputSchema(lang: string): string {
-    return `
-CRITICAL RULES:
-- Every place MUST be a real, specific, named establishment or location that physically exists (or existed recently).
-- Use the actual business name, not generic descriptions like "a ramen shop" or "local cafe".
-- "name" = the real name in English (or romanized). Example: "Ichiran Ramen Shibuya", NOT "A popular ramen chain".
-- "localName" = the real name in ${lang} native script only. Do NOT include romanization in this field.
-- "area" = specific neighborhood or district. Example: "Shibuya", "Trastevere", "Le Marais".
-- "description" = 1 sentence about what it is and where exactly it's located.
-- "whySpecial" = 1 sentence: why a local would recommend this over alternatives.
-- "vibeTags" = 2-4 mood/vibe tags lowercase.
-- "phrases" = 5 practical phrases for this type of place. Each phrase: {"english": "...", "local": "..."} where "local" is ONLY in ${lang} native script (no romanization, no parentheses).
+  function exploreSystemPrompt(lang: string, country: string): string {
+    return `You are a verified local guide for ${country} on a premium travel platform. Your recommendations directly affect real travelers who will visit these exact places. Accuracy is critical — a wrong name or fictional place damages trust.
 
-Return a JSON array ONLY, no markdown, no explanation:
-[{"name":"...","localName":"...","description":"...","whySpecial":"...","vibeTags":[...],"area":"...","phrases":[{"english":"...","local":"..."}]}]`;
+HARD CONSTRAINTS:
+1. Every place MUST be a real, currently operating establishment that can be found on Google Maps.
+2. Use the EXACT business name as it appears on the storefront or Google Maps listing — not a translation, paraphrase, or description.
+3. NEVER fabricate, merge, or generalize places. "A cozy ramen shop near the station" is WRONG. "Fuunji" is RIGHT.
+4. If you are not confident a specific place exists, skip it and include a different one you ARE confident about. 18 real places beats 20 with 2 fictional ones.
+
+OUTPUT FORMAT (JSON array, no markdown, no explanation):
+[{
+  "name": "Exact business name in English/romanized",
+  "localName": "Exact name in ${lang} script ONLY (no romanization, no parentheses)",
+  "description": "What it is + exact location (cross streets, landmarks, floor number if relevant)",
+  "whySpecial": "One specific reason a local would choose this over alternatives — be concrete, not generic",
+  "vibeTags": ["2-4 lowercase mood tags"],
+  "area": "Specific neighborhood/district name",
+  "phrases": [{"english": "Practical phrase for this place", "local": "In ${lang} native script ONLY"}]
+}]
+
+QUALITY CHECKS before outputting:
+- Could someone copy-paste each "name" into Google Maps and find it? If no, replace it.
+- Is "whySpecial" specific to THIS place, or could it describe any similar place? If generic, rewrite.
+- Are the phrases actually useful AT this specific type of place, not just generic tourist phrases?`;
   }
 
   const EXPLORE_CATEGORIES: Record<string, { prompt: (lang: string, country: string, code: string) => string }> = {
     'street-food': {
-      prompt: (lang, country, code) => `You are a local food blogger who lives in ${country}. Recommend 20 specific street food spots, food stalls, hole-in-the-wall eateries, and night market vendors.
+      prompt: (lang, country, code) => `${exploreSystemPrompt(lang, country)}
 
-Rules:
-- Name real places with their actual business names (e.g. "Fuunji Tsukemen" not "a tsukemen shop").
-- Prioritize places where locals eat, not tourist-oriented restaurants.
-- Mix: 30% famous local favorites, 50% neighborhood gems, 20% hidden finds.
-- Spread across different areas/neighborhoods — don't cluster in one district.
-- Include the specific dish or specialty each place is known for.
-${exploreOutputSchema(lang)}`,
+TASK: Recommend 20 street food spots in ${country}.
+
+WHAT TO INCLUDE:
+- Named food stalls, yatai, hawker stands, hole-in-the-wall shops (≤10 seats), night market vendors
+- Each place must be known for a SPECIFIC dish — name the dish in the description
+- Mix across different cities/neighborhoods — do not cluster more than 3 in one area
+- Prioritize: places with queues of locals, multi-generational family-run stalls, spots featured in local (not international) media
+
+WHAT TO AVOID:
+- Sit-down restaurants, chains, hotel restaurants, places primarily targeting tourists
+- Generic descriptions like "famous for delicious food" — name the exact dish and what makes it distinctive
+
+PHRASES: 5 phrases useful when ordering street food (ordering, asking about ingredients, dietary needs, paying, complimenting).`,
     },
     'hidden-history': {
-      prompt: (lang, country, code) => `You are a historian and local guide in ${country}. Recommend 20 specific lesser-known historical sites, ancient temples, forgotten ruins, heritage buildings, and culturally significant locations that most tourists walk right past.
+      prompt: (lang, country, code) => `${exploreSystemPrompt(lang, country)}
 
-Rules:
-- Name real sites with their actual names (e.g. "Nezu Shrine" not "an old shrine").
-- Skip the top-10 tourist sites everyone knows — focus on places ranked outside the top attractions.
-- Include founding year or historical period when known.
-- Mix: temples, shrines, old merchant districts, castle ruins, war memorials, heritage homes, ancient gardens.
-${exploreOutputSchema(lang)}`,
+TASK: Recommend 20 lesser-known historical and cultural sites in ${country}.
+
+WHAT TO INCLUDE:
+- Sites with real historical significance that most tourists miss — NOT the top 10 attractions
+- For each: mention the era, historical event, or cultural significance in "whySpecial"
+- Include: forgotten temples, heritage neighborhoods, old merchant houses, minor castles/fortifications, WWII/war sites, ancient workshops still operating, historical gardens, lesser-known shrines
+- Specify if there's an entry fee, opening hours, or if it's outdoor/always accessible
+
+WHAT TO AVOID:
+- Major landmarks that appear in every guidebook (e.g., for Japan: skip Fushimi Inari, Senso-ji, Kinkaku-ji)
+- Places without genuine historical significance — "old-looking" is not enough
+- Vague descriptions — "built centuries ago" → give the actual century or year
+
+PHRASES: 5 phrases for visiting cultural sites (asking about history, photography permission, guided tours, opening times, showing respect).`,
     },
     'chill-spots': {
-      prompt: (lang, country, code) => `You are a local in ${country} who knows the best places to relax. Recommend 20 specific cafes, tea houses, parks, gardens, rooftop terraces, reading spots, and peaceful hideaways.
+      prompt: (lang, country, code) => `${exploreSystemPrompt(lang, country)}
 
-Rules:
-- Name real establishments with actual business names (e.g. "Cafe de Flore" not "a Parisian cafe").
-- Focus on atmosphere: quiet, beautiful, contemplative places with character.
-- Include a mix: independent cafes, public gardens, scenic viewpoints, bookshop cafes, riverside spots.
-- Mention if they have wifi, outdoor seating, or notable views.
-${exploreOutputSchema(lang)}`,
+TASK: Recommend 20 places to relax and unwind in ${country}.
+
+WHAT TO INCLUDE:
+- Independent cafes with character (not chains), kissaten, tea houses, bookshop-cafes
+- Public gardens, parks with specific scenic spots (name the exact bench/viewpoint/area)
+- Rooftop terraces, riverside walks, quiet temple/church grounds open to visitors
+- In "description": mention key details — wifi availability, power outlets, outdoor seating, best time to visit
+- In "whySpecial": what makes the atmosphere distinctive — the specific view, the music, the vintage interior
+
+WHAT TO AVOID:
+- Starbucks, chain cafes, hotel lobbies
+- Places that are "chill" only because they're empty/unpopular
+- Generic park names without a specific recommendation of where within the park
+
+PHRASES: 5 phrases for cafe/relaxation settings (ordering drinks, asking for wifi password, requesting quiet area, asking about seating, thanking staff).`,
     },
     'after-dark': {
-      prompt: (lang, country, code) => `You are a nightlife-savvy local in ${country}. Recommend 20 specific bars, izakayas, night markets, jazz clubs, rooftop bars, live music venues, and evening experiences.
+      prompt: (lang, country, code) => `${exploreSystemPrompt(lang, country)}
 
-Rules:
-- Name real venues with actual business names (e.g. "Golden Gai Bar Albatross" not "a small bar").
-- Mix: 30% cocktail/wine bars, 20% live music/jazz, 20% night markets/late-night food, 15% rooftop/views, 15% unique experiences (speakeasies, cultural performances).
-- Include approximate price range in the description (budget, moderate, upscale).
-- Spread across different neighborhoods.
-${exploreOutputSchema(lang)}`,
+TASK: Recommend 20 nightlife and evening experiences in ${country}.
+
+WHAT TO INCLUDE:
+- Named bars (cocktail bars, wine bars, dive bars, speakeasies), live music clubs, jazz venues
+- Night markets, late-night food stalls open after 10pm
+- Cultural night experiences: illuminated temples, night cruises, evening performances
+- In "description": include price range (budget/moderate/upscale) and typical crowd
+- Cover different vibes: romantic, lively, intimate, cultural, adventurous
+
+WHAT TO AVOID:
+- Tourist nightlife strips, international chain bars, hotel bars (unless truly exceptional)
+- Clubs requiring membership/connections that a tourist can't access
+- Anywhere primarily known for being dangerous or a scam risk
+
+PHRASES: 5 phrases for nightlife (ordering drinks, asking for recommendations, toasting, requesting the bill, asking about cover charge).`,
     },
     'hidden-gems': {
-      prompt: (lang, country, code) => `You are a long-time resident of ${country} sharing your personal secret spots. Recommend 20 specific hidden gems — places that don't appear in typical guidebooks and that you'd only know about from living there.
+      prompt: (lang, country, code) => `${exploreSystemPrompt(lang, country)}
 
-Rules:
-- Name real places with actual names (e.g. "Yanaka Cemetery Cat Walk" not "a quiet neighborhood walk").
-- These should be genuinely surprising or unknown to most visitors: secret viewpoints, locals-only restaurants, unmarked entrances, seasonal-only spots, quirky museums.
-- Each place should have a story or detail that makes someone say "I never would have found this on my own."
-- NO places that appear on the first page of Google for "${country} travel".
-${exploreOutputSchema(lang)}`,
+TASK: Recommend 20 hidden gems in ${country} — places a tourist would NEVER find without local knowledge.
+
+WHAT TO INCLUDE:
+- Places with no or minimal English-language online presence
+- Secret viewpoints, unmarked doors, basement bars, rooftop gardens not on any list
+- Shops/restaurants in residential neighborhoods with no signage aimed at foreigners
+- Seasonal or time-specific experiences (dawn fish auctions, midnight shrine visits, weekly pop-ups)
+- In "whySpecial": tell the STORY — how do locals discover this place? What's the local legend or tradition?
+
+WHAT TO AVOID:
+- Anything that appears in Lonely Planet, TripAdvisor top 20, or first-page Google results for "${country} hidden gems"
+- Places that are "hidden" only because they're new or unremarkable
+- Fabricated places — if you cannot name the exact establishment, skip it
+
+PHRASES: 5 phrases for navigating off-the-beaten-path (asking locals for directions, explaining you heard about it from a friend, apologizing for not speaking the language, asking if the place is open, expressing gratitude for the experience).`,
     },
     'creative-scene': {
-      prompt: (lang, country, code) => `You are an artist and culture enthusiast living in ${country}. Recommend 20 specific galleries, street art locations, independent theaters, artisan workshops, music venues, creative markets, and cultural spaces.
+      prompt: (lang, country, code) => `${exploreSystemPrompt(lang, country)}
 
-Rules:
-- Name real venues with actual names (e.g. "teamLab Borderless" not "a digital art museum").
-- Focus on independent and local creative scenes, not major national museums everyone knows.
-- Include: street art neighborhoods (name the specific streets), artisan workshops you can visit, indie music venues, design districts, maker spaces, underground galleries.
-- Mention what kind of art/creativity each place features.
-${exploreOutputSchema(lang)}`,
+TASK: Recommend 20 creative and artistic places in ${country}.
+
+WHAT TO INCLUDE:
+- Independent galleries (name the gallery AND the type of art), street art locations (name the EXACT street/alley)
+- Artisan workshops where visitors can watch or participate (ceramics, textiles, glasswork, woodwork)
+- Indie music venues, underground theaters, experimental performance spaces
+- Design districts, maker spaces, creative co-working spaces open to visitors
+- In "description": what type of art/creativity + can you visit/participate or just observe?
+
+WHAT TO AVOID:
+- Major national museums everyone knows (MoMA, Louvre, etc.)
+- Generic "art district" without specific galleries or addresses
+- Places that are "creative" only in name but have no active creative programming
+
+PHRASES: 5 phrases for creative venues (asking about current exhibitions, photography permission, workshop availability, purchasing art, complimenting the work).`,
     },
     'nature-escapes': {
-      prompt: (lang, country, code) => `You are an outdoor enthusiast living in ${country}. Recommend 20 specific nature spots, hiking trails, gardens, beaches, scenic viewpoints, and natural areas.
+      prompt: (lang, country, code) => `${exploreSystemPrompt(lang, country)}
 
-Rules:
-- Name real places with actual trail/park/beach names (e.g. "Mount Takao Trail 1" not "a mountain hike").
-- Include practical details: approximate travel time from nearest city, difficulty level, best season.
-- Mix: 30% easy day trips, 30% moderate hikes, 20% beaches/water, 20% gardens/scenic viewpoints.
-- Focus on places reachable by public transport or short taxi from major cities.
-${exploreOutputSchema(lang)}`,
+TASK: Recommend 20 nature and outdoor experiences in ${country}.
+
+WHAT TO INCLUDE:
+- Named trails with specific route names (e.g. "Mount Takao Trail 1 (Omotesando)" not just "Mount Takao")
+- In "description": travel time from nearest major city, difficulty (easy/moderate/challenging), duration
+- Best season or time of day in "whySpecial" (cherry blossom timing, autumn colors, sunrise spots)
+- Mix: coastal walks, mountain hikes, botanical gardens, waterfalls, hot springs, swimming spots, cycling routes
+- Focus on places reachable by public transport — mention the nearest station/stop
+
+WHAT TO AVOID:
+- Extreme/technical climbs requiring special gear or guides
+- Remote places with no public transport access (unless truly exceptional)
+- Nature spots that are actually just city parks dressed up as "escapes"
+
+PHRASES: 5 phrases for outdoor activities (asking about trail conditions, requesting water/supplies, asking about wildlife/dangers, emergency help, expressing awe at scenery).`,
     },
     'local-markets': {
-      prompt: (lang, country, code) => `You are a shopping-savvy local in ${country}. Recommend 20 specific markets, bazaars, craft shops, vintage stores, and places to buy authentic local goods and meaningful souvenirs.
+      prompt: (lang, country, code) => `${exploreSystemPrompt(lang, country)}
 
-Rules:
-- Name real markets with actual names (e.g. "Chatuchak Weekend Market" not "a big weekend market").
-- Include opening days/hours if they're limited (e.g. "weekends only", "morning only").
-- Mix: food markets, flea markets, craft/artisan markets, antique markets, specialty shops (ceramics, textiles, spices).
-- Focus on where locals actually shop, not tourist souvenir strips.
-- Mention what each place is best for buying.
-${exploreOutputSchema(lang)}`,
+TASK: Recommend 20 markets and local shopping spots in ${country}.
+
+WHAT TO INCLUDE:
+- Named markets with opening days/hours in "description" (e.g. "Open weekends 6am-2pm")
+- What each market is BEST for buying — be specific (e.g. "vintage kimono" not just "clothes")
+- Mix: morning food markets, weekend flea markets, artisan craft markets, antique/vintage, specialty shops (spices, tea, ceramics, textiles, leather)
+- Include haggling culture in "whySpecial" — can you bargain? What's the expected discount?
+- Local shopping streets and shotengai/covered arcades that tourists overlook
+
+WHAT TO AVOID:
+- Souvenir shops selling mass-produced trinkets aimed at tourists
+- Shopping malls, department stores, duty-free shops
+- Markets that have become 100% tourist-oriented with inflated prices
+
+PHRASES: 5 phrases for shopping/markets (asking price, bargaining, asking about materials/origin, requesting wrapping, asking about return/exchange).`,
     },
   };
 
