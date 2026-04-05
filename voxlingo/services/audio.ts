@@ -26,22 +26,40 @@ async function setPlaybackMode() {
 
 // --- Native (iOS/Android) using expo-av ---
 
-async function startNativeRecording(): Promise<void> {
+async function startNativeRecording(retries = 3): Promise<void> {
   const { status } = await Audio.requestPermissionsAsync();
   if (status !== 'granted') {
     throw new Error('Microphone permission is required to record audio');
   }
 
   if (recording) {
-    throw new Error('Recording already in progress');
+    try {
+      await recording.stopAndUnloadAsync();
+    } catch {
+      // ignore cleanup errors
+    }
+    recording = null;
   }
 
-  await setRecordingMode();
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      await setPlaybackMode();
+      await setRecordingMode();
 
-  const newRecording = new Audio.Recording();
-  await newRecording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
-  await newRecording.startAsync();
-  recording = newRecording;
+      const newRecording = new Audio.Recording();
+      await newRecording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+      await newRecording.startAsync();
+      recording = newRecording;
+      return;
+    } catch (err) {
+      if (attempt < retries - 1) {
+        // Wait longer each retry for audio session to release
+        await new Promise((r) => setTimeout(r, 300 * (attempt + 1)));
+      } else {
+        throw err;
+      }
+    }
+  }
 }
 
 async function stopNativeRecording(): Promise<string> {
