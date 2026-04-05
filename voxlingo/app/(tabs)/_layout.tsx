@@ -46,6 +46,15 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
+          name="explore"
+          options={{
+            title: 'Explore',
+            tabBarIcon: ({ focused }) => (
+              <Text style={styles.tabIcon}>{focused ? '🧭' : '🧭'}</Text>
+            ),
+          }}
+        />
+        <Tabs.Screen
           name="camera"
           options={{
             title: 'Camera',

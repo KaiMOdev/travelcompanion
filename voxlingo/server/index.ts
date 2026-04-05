@@ -1,7 +1,10 @@
-import express, { Request, Response } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
+import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 
@@ -34,17 +37,137 @@ const CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 export function createApp() {
   const app = express();
+  const isProd = process.env.NODE_ENV === 'production';
 
-  app.use(cors());
-  app.use(express.json({ limit: '25mb' }));
+  // Trust proxy for Fly.io / reverse proxies (needed for rate limiting + req.ip)
+  if (isProd) {
+    app.set('trust proxy', 1);
+  }
 
-  const apiKey = process.env.GEMINI_API_KEY || '';
-  const ai = new GoogleGenAI({ apiKey });
+  // Security headers
+  app.use(helmet());
+
+  // CORS — restrict to known origins, fail closed in production
+  const allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').filter(Boolean);
+  if (isProd && allowedOrigins.length === 0) {
+    throw new Error('ALLOWED_ORIGINS must be configured in production');
+  }
+  app.use(cors({
+    origin: allowedOrigins.length > 0
+      ? (origin, callback) => {
+          if (!origin || allowedOrigins.includes(origin)) callback(null, true);
+          else callback(null, false);
+        }
+      : true, // allow all in dev when ALLOWED_ORIGINS is not set
+  }));
+
+  app.use(express.json({ limit: '10mb' }));
+
+  // Rate limiting — stricter on expensive AI endpoints
+  const aiLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests, please try again later' },
+  });
+  const cacheLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 60,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests, please try again later' },
+  });
+
+  // Health check (before auth so load balancers can reach it)
+  app.get('/health', (_req: Request, res: Response) => {
+    res.json({ status: 'ok' });
+  });
+
+  // API key authentication middleware
+  const serverApiKey = process.env.SERVER_API_KEY;
+  if (isProd && !serverApiKey) {
+    throw new Error('SERVER_API_KEY must be configured in production');
+  }
+
+  function safeEqual(a: string, b: string): boolean {
+    const aBuf = Buffer.from(a);
+    const bBuf = Buffer.from(b);
+    if (aBuf.length !== bBuf.length) return false;
+    return crypto.timingSafeEqual(aBuf, bBuf);
+  }
+
+  const apiKeyAuth = (req: Request, res: Response, next: NextFunction): void => {
+    if (!serverApiKey) { next(); return; } // skip auth if not configured (dev mode)
+    const clientKey = req.headers['x-api-key'] as string;
+    if (!clientKey || !safeEqual(clientKey, serverApiKey)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    next();
+  };
+
+  app.use(apiKeyAuth);
+
+  // Validate required env vars
+  const geminiKey = process.env.GEMINI_API_KEY;
+  if (!geminiKey) {
+    throw new Error('GEMINI_API_KEY environment variable is required');
+  }
+  const ai = new GoogleGenAI({ apiKey: geminiKey });
+
+  // Request timeout helper for Gemini calls
+  async function callGemini(params: Parameters<typeof ai.models.generateContent>[0], timeoutMs = 30000) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const p = params as unknown as Record<string, unknown>;
+      return await ai.models.generateContent({
+        ...params,
+        config: { ...(p.config as Record<string, unknown> | undefined), abortSignal: controller.signal },
+      } as Parameters<typeof ai.models.generateContent>[0]);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  // Input validation helpers
+  const ALLOWED_AUDIO_MIMES = new Set(['audio/mp4', 'audio/mpeg', 'audio/wav', 'audio/webm', 'audio/aac', 'audio/ogg']);
+  const MAX_AUDIO_BASE64_LENGTH = 5 * 1024 * 1024; // ~3.7MB decoded
+  const MAX_IMAGE_BASE64_LENGTH = 10 * 1024 * 1024; // ~7.5MB decoded
+
+  // Error classification for Gemini/upstream failures
+  function classifyError(err: unknown): { status: number; message: string } {
+    if (err instanceof Error) {
+      const msg = err.message;
+      if (err.name === 'AbortError' || msg.includes('aborted')) {
+        return { status: 504, message: 'Translation timed out. Please try again.' };
+      }
+      if (msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED')) {
+        return { status: 429, message: 'Service is busy. Please try again in a moment.' };
+      }
+      if (msg.includes('403') || msg.includes('PERMISSION_DENIED')) {
+        return { status: 503, message: 'Translation service unavailable.' };
+      }
+    }
+    return { status: 500, message: 'Translation failed' };
+  }
+
+  // Express-level response timeout fallback
+  app.use((_req: Request, res: Response, next: NextFunction) => {
+    res.setTimeout(60000, () => {
+      if (!res.headersSent) {
+        res.status(504).json({ error: 'Request timeout' });
+      }
+    });
+    next();
+  });
 
   // --- Culture cache (in-memory + file-based) ---
   const cultureCache = new Map<string, { data: unknown[]; timestamp: number }>();
   const phraseCache = new Map<string, { data: unknown[]; timestamp: number }>();
   const tipCache = new Map<string, { data: unknown[]; timestamp: number }>();
+  const exploreCache = new Map<string, { data: unknown[]; timestamp: number }>();
 
   const CACHE_DIR = path.join(__dirname, 'cache');
   if (!fs.existsSync(CACHE_DIR)) {
@@ -78,7 +201,9 @@ export function createApp() {
       const cacheKey = file.replace('.json', '');
       const cached = readCacheFile(cacheKey);
       if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-        if (cacheKey.endsWith('-phrases')) {
+        if (cacheKey.startsWith('explore-')) {
+          exploreCache.set(cacheKey, cached);
+        } else if (cacheKey.endsWith('-phrases')) {
           phraseCache.set(cacheKey, cached);
         } else if (cacheKey.endsWith('-tips')) {
           tipCache.set(cacheKey, cached);
@@ -92,12 +217,22 @@ export function createApp() {
     // Cache dir may not exist yet
   }
 
-  app.post('/translate', async (req: Request, res: Response) => {
+  app.post('/translate', aiLimiter, async (req: Request, res: Response) => {
     const { audio, sourceLang, targetLang, mimeType } = req.body;
     const audioMime = mimeType || 'audio/mp4';
 
     if (!audio || !sourceLang || !targetLang) {
       res.status(400).json({ error: 'Missing required fields: audio, sourceLang, targetLang' });
+      return;
+    }
+
+    if (typeof audio !== 'string' || audio.length > MAX_AUDIO_BASE64_LENGTH) {
+      res.status(400).json({ error: 'Audio payload too large or invalid' });
+      return;
+    }
+
+    if (!ALLOWED_AUDIO_MIMES.has(audioMime)) {
+      res.status(400).json({ error: 'Unsupported audio format' });
       return;
     }
 
@@ -123,7 +258,7 @@ Rules:
 Return JSON only: { "originalText": "...", "translatedText": "...", "noSpeechDetected": false }`;
 
     try {
-      const result = await ai.models.generateContent({
+      const result = await callGemini({
         model: GEMINI_MODEL,
         contents: [
           {
@@ -161,17 +296,28 @@ Return JSON only: { "originalText": "...", "translatedText": "...", "noSpeechDet
         noSpeechDetected: false,
       });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Translation failed';
-      res.status(500).json({ error: message });
+      console.error('Translation error:', err);
+      const { status, message } = classifyError(err);
+      res.status(status).json({ error: message });
     }
   });
 
-  app.post('/translate/stream', async (req: Request, res: Response) => {
+  app.post('/translate/stream', aiLimiter, async (req: Request, res: Response) => {
     const { audio, sourceLang, targetLang, mimeType } = req.body;
     const audioMime = mimeType || 'audio/mp4';
 
     if (!audio || !sourceLang || !targetLang) {
       res.status(400).json({ error: 'Missing required fields: audio, sourceLang, targetLang' });
+      return;
+    }
+
+    if (typeof audio !== 'string' || audio.length > MAX_AUDIO_BASE64_LENGTH) {
+      res.status(400).json({ error: 'Audio payload too large or invalid' });
+      return;
+    }
+
+    if (!ALLOWED_AUDIO_MIMES.has(audioMime)) {
+      res.status(400).json({ error: 'Unsupported audio format' });
       return;
     }
 
@@ -201,9 +347,19 @@ Return JSON only: { "translatedText": "..." }`;
     res.setHeader('Connection', 'keep-alive');
     res.flushHeaders();
 
+    // Abort Gemini calls if client disconnects
+    let clientDisconnected = false;
+    req.on('close', () => { clientDisconnected = true; });
+
+    function safeSend(data: string): boolean {
+      if (clientDisconnected) return false;
+      res.write(data);
+      return true;
+    }
+
     try {
       // Phase 1: Transcribe
-      const transcribeResult = await ai.models.generateContent({
+      const transcribeResult = await callGemini({
         model: GEMINI_MODEL,
         contents: [
           {
@@ -216,11 +372,13 @@ Return JSON only: { "translatedText": "..." }`;
         ],
       });
 
+      if (clientDisconnected) return;
+
       const transcribeText = transcribeResult.text ?? '';
       const transcribeMatch = transcribeText.match(/\{[\s\S]*\}/);
       if (!transcribeMatch) {
-        res.write(`data: ${JSON.stringify({ error: 'Failed to transcribe audio' })}\n\n`);
-        res.write('data: [DONE]\n\n');
+        safeSend(`data: ${JSON.stringify({ error: 'Failed to transcribe audio' })}\n\n`);
+        safeSend('data: [DONE]\n\n');
         res.end();
         return;
       }
@@ -229,10 +387,12 @@ Return JSON only: { "translatedText": "..." }`;
       const originalText = transcribed.originalText || '';
 
       // Send original text immediately
-      res.write(`data: ${JSON.stringify({ originalText })}\n\n`);
+      safeSend(`data: ${JSON.stringify({ originalText })}\n\n`);
+
+      if (clientDisconnected) return;
 
       // Phase 2: Translate
-      const translateResult = await ai.models.generateContent({
+      const translateResult = await callGemini({
         model: GEMINI_MODEL,
         contents: [
           {
@@ -244,11 +404,13 @@ Return JSON only: { "translatedText": "..." }`;
         ],
       });
 
+      if (clientDisconnected) return;
+
       const translateText = translateResult.text ?? '';
       const translateMatch = translateText.match(/\{[\s\S]*\}/);
       if (!translateMatch) {
-        res.write(`data: ${JSON.stringify({ error: 'Failed to translate' })}\n\n`);
-        res.write('data: [DONE]\n\n');
+        safeSend(`data: ${JSON.stringify({ error: 'Failed to translate' })}\n\n`);
+        safeSend('data: [DONE]\n\n');
         res.end();
         return;
       }
@@ -256,22 +418,29 @@ Return JSON only: { "translatedText": "..." }`;
       const translated = JSON.parse(translateMatch[0]);
 
       // Send translation
-      res.write(`data: ${JSON.stringify({ originalText, translatedText: translated.translatedText })}\n\n`);
-      res.write('data: [DONE]\n\n');
+      safeSend(`data: ${JSON.stringify({ originalText, translatedText: translated.translatedText })}\n\n`);
+      safeSend('data: [DONE]\n\n');
       res.end();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Translation failed';
-      res.write(`data: ${JSON.stringify({ error: message })}\n\n`);
-      res.write('data: [DONE]\n\n');
+      if (clientDisconnected) return;
+      console.error('Stream translation error:', err);
+      const { message } = classifyError(err);
+      safeSend(`data: ${JSON.stringify({ error: message })}\n\n`);
+      safeSend('data: [DONE]\n\n');
       res.end();
     }
   });
 
-  app.post('/vision', async (req: Request, res: Response) => {
+  app.post('/vision', aiLimiter, async (req: Request, res: Response) => {
     const { image, targetLang, dietaryPreferences } = req.body;
 
     if (!image || !targetLang) {
       res.status(400).json({ error: 'Missing required fields: image, targetLang' });
+      return;
+    }
+
+    if (typeof image !== 'string' || image.length > MAX_IMAGE_BASE64_LENGTH) {
+      res.status(400).json({ error: 'Image payload too large or invalid' });
       return;
     }
 
@@ -281,8 +450,11 @@ Return JSON only: { "translatedText": "..." }`;
     }
 
     const targetName = LANG_NAMES[targetLang];
-    const dietaryNote = dietaryPreferences?.length
-      ? `The user has these dietary restrictions: ${dietaryPreferences.join(', ')}. Flag any items that may conflict.`
+    const sanitizedPreferences = Array.isArray(dietaryPreferences)
+      ? dietaryPreferences.map((p: string) => String(p).replace(/["\n\\]/g, '')).slice(0, 10)
+      : [];
+    const dietaryNote = sanitizedPreferences.length
+      ? `The user has these dietary restrictions: ${sanitizedPreferences.join(', ')}. Flag any items that may conflict.`
       : '';
 
     const prompt = `Analyze this image and determine what type of content it shows.
@@ -317,7 +489,7 @@ Format: { "contentType": "general", "detectedLanguage": "...", "originalText": "
 Return JSON only. No markdown wrapping.`;
 
     try {
-      const result = await ai.models.generateContent({
+      const result = await callGemini({
         model: GEMINI_MODEL,
         contents: [
           {
@@ -368,18 +540,24 @@ Return JSON only. No markdown wrapping.`;
 
       res.json(parsed);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Vision translation failed';
-      res.status(500).json({ error: message });
+      console.error('Vision error:', err);
+      const { status, message } = classifyError(err);
+      res.status(status).json({ error: message });
     }
   });
 
   // --- Text translation endpoint (for addresses, UI text) ---
 
-  app.post('/translate/text', async (req: Request, res: Response) => {
+  app.post('/translate/text', aiLimiter, async (req: Request, res: Response) => {
     const { texts, targetLang } = req.body;
 
     if (!texts || !Array.isArray(texts) || !targetLang) {
       res.status(400).json({ error: 'Missing required fields: texts (array), targetLang' });
+      return;
+    }
+
+    if (texts.length > 50) {
+      res.status(400).json({ error: 'Too many texts (max 50)' });
       return;
     }
 
@@ -389,15 +567,16 @@ Return JSON only. No markdown wrapping.`;
     }
 
     const targetName = LANG_NAMES[targetLang];
+    const sanitizedTexts = texts.map((t: string) => String(t).slice(0, 500));
     const prompt = `Translate the following texts to ${targetName}. Return a JSON object with a "translations" array containing each translated text in order. Use native script (e.g. Cyrillic for Croatian/Russian, Kanji for Japanese, etc.).
 
 Texts to translate:
-${texts.map((t: string, i: number) => `${i + 1}. "${t}"`).join('\n')}
+${sanitizedTexts.map((t: string, i: number) => `${i + 1}. ${JSON.stringify(t)}`).join('\n')}
 
 Return JSON only: { "translations": ["...", "..."] }`;
 
     try {
-      const result = await ai.models.generateContent({
+      const result = await callGemini({
         model: GEMINI_MODEL,
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
       });
@@ -412,14 +591,15 @@ Return JSON only: { "translations": ["...", "..."] }`;
       const parsed = JSON.parse(jsonMatch[0]);
       res.json({ translations: parsed.translations || [] });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Text translation failed';
-      res.status(500).json({ error: message });
+      console.error('Text translation error:', err);
+      const { status, message } = classifyError(err);
+      res.status(status).json({ error: message });
     }
   });
 
   // --- Destination endpoints ---
 
-  app.get('/destination/:code/phrases', async (req: Request, res: Response) => {
+  app.get('/destination/:code/phrases', cacheLimiter, async (req: Request, res: Response) => {
     const code = req.params.code as string;
     const langName = COUNTRY_LANGS[code.toUpperCase()];
 
@@ -458,7 +638,7 @@ Include greetings, thanks, apologies, directions, food ordering, shopping, emerg
 Return JSON array only: [{ "id": "1", "english": "...", "translated": "...", "romanized": "...", "category": "...", "isEditorial": false }]`;
 
     try {
-      const result = await ai.models.generateContent({
+      const result = await callGemini({
         model: GEMINI_MODEL,
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
       });
@@ -476,12 +656,13 @@ Return JSON array only: [{ "id": "1", "english": "...", "translated": "...", "ro
       writeCacheFile(cacheKey, phrases);
       res.json(phrases);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to generate phrases';
-      res.status(500).json({ error: message });
+      console.error('Phrases error:', err);
+      const { status, message } = classifyError(err);
+      res.status(status).json({ error: message });
     }
   });
 
-  app.get('/destination/:code/tips', async (req: Request, res: Response) => {
+  app.get('/destination/:code/tips', cacheLimiter, async (req: Request, res: Response) => {
     const code = req.params.code as string;
     const langName = COUNTRY_LANGS[code.toUpperCase()];
 
@@ -520,7 +701,7 @@ Cover etiquette, money, food, safety, social norms, language, transport, shoppin
 Return JSON array only: [{ "id": "1", "category": "...", "title": "...", "body": "...", "countryCode": "...", "sourceType": "ai-generated" }]`;
 
     try {
-      const result = await ai.models.generateContent({
+      const result = await callGemini({
         model: GEMINI_MODEL,
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
       });
@@ -538,8 +719,9 @@ Return JSON array only: [{ "id": "1", "category": "...", "title": "...", "body":
       writeCacheFile(cacheKey, tips);
       res.json(tips);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to generate tips';
-      res.status(500).json({ error: message });
+      console.error('Tips error:', err);
+      const { status, message } = classifyError(err);
+      res.status(status).json({ error: message });
     }
   });
 
@@ -642,7 +824,7 @@ Return JSON array ONLY: [{ "id": "1", "title": "1 — One", "body": "...", "spea
     },
   };
 
-  app.get('/destination/:code/culture/:category', async (req: Request, res: Response) => {
+  app.get('/destination/:code/culture/:category', cacheLimiter, async (req: Request, res: Response) => {
     const code = (req.params.code as string).toUpperCase();
     const category = req.params.category as string;
     const langName = COUNTRY_LANGS[code];
@@ -676,7 +858,7 @@ Return JSON array ONLY: [{ "id": "1", "title": "1 — One", "body": "...", "spea
     const prompt = categoryDef.prompt(langName, `a ${langName}-speaking country (${code})`);
 
     try {
-      const result = await ai.models.generateContent({
+      const result = await callGemini({
         model: GEMINI_MODEL,
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
       });
@@ -714,18 +896,252 @@ Return JSON array ONLY: [{ "id": "1", "title": "1 — One", "body": "...", "spea
       writeCacheFile(cacheKey, enriched);
       res.json(enriched);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to generate culture content';
-      res.status(500).json({ error: message });
+      console.error('Culture content error:', err);
+      const { status, message } = classifyError(err);
+      res.status(status).json({ error: message });
+    }
+  });
+
+  // --- Explore (AI Local Guide) ---
+  const EXPLORE_CATEGORIES: Record<string, { prompt: (lang: string, country: string, code: string) => string }> = {
+    'street-food': {
+      prompt: (lang, country, code) => `Generate 20 street food and local food recommendations for travelers visiting ${country} (${code}).
+Focus on authentic, local-perspective spots — places locals actually eat, not tourist-heavy restaurants.
+Include food stalls, night markets, hole-in-the-wall eateries, and regional specialties.
+
+For each place provide:
+- name: English name
+- localName: name in ${lang} native script
+- description: 1 sentence describing the place
+- whySpecial: 1 sentence about what makes it unique or worth visiting
+- vibeTags: 2-4 tags like "casual", "budget-friendly", "late-night", "family"
+- area: neighborhood or area name
+- phrases: 5-8 contextual phrases useful at this type of place, each with "english", "local" (in ${lang}), and "context" (when to use it)
+
+Return JSON array ONLY: [{ "name": "...", "localName": "...", "description": "...", "whySpecial": "...", "vibeTags": [...], "area": "...", "phrases": [{ "english": "...", "local": "...", "context": "..." }] }]`,
+    },
+    'hidden-history': {
+      prompt: (lang, country, code) => `Generate 20 lesser-known historical and cultural site recommendations for travelers visiting ${country} (${code}).
+Focus on hidden gems — lesser-known temples, ruins, historical buildings, and monuments that most tourists miss.
+
+For each place provide:
+- name: English name
+- localName: name in ${lang} native script
+- description: 1 sentence describing the place
+- whySpecial: 1 sentence about what makes it unique
+- vibeTags: 2-4 tags like "quiet", "photogenic", "free", "ancient"
+- area: neighborhood or area name
+- phrases: 5-8 contextual phrases useful at this type of place, each with "english", "local" (in ${lang}), and "context"
+
+Return JSON array ONLY: [{ "name": "...", "localName": "...", "description": "...", "whySpecial": "...", "vibeTags": [...], "area": "...", "phrases": [{ "english": "...", "local": "...", "context": "..." }] }]`,
+    },
+    'chill-spots': {
+      prompt: (lang, country, code) => `Generate 20 relaxing and chill spot recommendations for travelers visiting ${country} (${code}).
+Focus on quiet cafes, parks, rooftop views, peaceful gardens, and places to unwind that locals love.
+
+For each place provide:
+- name: English name
+- localName: name in ${lang} native script
+- description: 1 sentence describing the place
+- whySpecial: 1 sentence about what makes it unique
+- vibeTags: 2-4 tags like "quiet", "scenic", "wifi", "cozy"
+- area: neighborhood or area name
+- phrases: 5-8 contextual phrases useful at this type of place, each with "english", "local" (in ${lang}), and "context"
+
+Return JSON array ONLY: [{ "name": "...", "localName": "...", "description": "...", "whySpecial": "...", "vibeTags": [...], "area": "...", "phrases": [{ "english": "...", "local": "...", "context": "..." }] }]`,
+    },
+    'after-dark': {
+      prompt: (lang, country, code) => `Generate 20 nightlife and evening activity recommendations for travelers visiting ${country} (${code}).
+Focus on night markets, bars, live music venues, evening food stalls, and after-dark experiences locals enjoy.
+
+For each place provide:
+- name: English name
+- localName: name in ${lang} native script
+- description: 1 sentence describing the place
+- whySpecial: 1 sentence about what makes it unique
+- vibeTags: 2-4 tags like "lively", "romantic", "live-music", "late-night"
+- area: neighborhood or area name
+- phrases: 5-8 contextual phrases useful at this type of place, each with "english", "local" (in ${lang}), and "context"
+
+Return JSON array ONLY: [{ "name": "...", "localName": "...", "description": "...", "whySpecial": "...", "vibeTags": [...], "area": "...", "phrases": [{ "english": "...", "local": "...", "context": "..." }] }]`,
+    },
+    'hidden-gems': {
+      prompt: (lang, country, code) => `Generate 20 hidden gem recommendations for travelers visiting ${country} (${code}).
+Focus on places only locals know — secret viewpoints, unmarked restaurants, neighborhood favorites, unusual attractions off the beaten path.
+
+For each place provide:
+- name: English name
+- localName: name in ${lang} native script
+- description: 1 sentence describing the place
+- whySpecial: 1 sentence about what makes it unique
+- vibeTags: 2-4 tags like "secret", "local-favorite", "unique", "off-beat"
+- area: neighborhood or area name
+- phrases: 5-8 contextual phrases useful at this type of place, each with "english", "local" (in ${lang}), and "context"
+
+Return JSON array ONLY: [{ "name": "...", "localName": "...", "description": "...", "whySpecial": "...", "vibeTags": [...], "area": "...", "phrases": [{ "english": "...", "local": "...", "context": "..." }] }]`,
+    },
+    'creative-scene': {
+      prompt: (lang, country, code) => `Generate 20 creative and art scene recommendations for travelers visiting ${country} (${code}).
+Focus on galleries, street art neighborhoods, live music venues, independent theaters, artisan workshops, and creative spaces.
+
+For each place provide:
+- name: English name
+- localName: name in ${lang} native script
+- description: 1 sentence describing the place
+- whySpecial: 1 sentence about what makes it unique
+- vibeTags: 2-4 tags like "artistic", "indie", "interactive", "free"
+- area: neighborhood or area name
+- phrases: 5-8 contextual phrases useful at this type of place, each with "english", "local" (in ${lang}), and "context"
+
+Return JSON array ONLY: [{ "name": "...", "localName": "...", "description": "...", "whySpecial": "...", "vibeTags": [...], "area": "...", "phrases": [{ "english": "...", "local": "...", "context": "..." }] }]`,
+    },
+    'nature-escapes': {
+      prompt: (lang, country, code) => `Generate 20 nature and outdoor recommendations for travelers visiting ${country} (${code}).
+Focus on nearby nature spots, hiking trails, gardens, parks, beaches, and scenic areas accessible from major cities.
+
+For each place provide:
+- name: English name
+- localName: name in ${lang} native script
+- description: 1 sentence describing the place
+- whySpecial: 1 sentence about what makes it unique
+- vibeTags: 2-4 tags like "scenic", "easy-hike", "sunrise", "swimming"
+- area: region or area name
+- phrases: 5-8 contextual phrases useful at this type of place, each with "english", "local" (in ${lang}), and "context"
+
+Return JSON array ONLY: [{ "name": "...", "localName": "...", "description": "...", "whySpecial": "...", "vibeTags": [...], "area": "...", "phrases": [{ "english": "...", "local": "...", "context": "..." }] }]`,
+    },
+    'local-markets': {
+      prompt: (lang, country, code) => `Generate 20 local market and shopping recommendations for travelers visiting ${country} (${code}).
+Focus on traditional markets, craft markets, flea markets, artisan shops, and places to buy authentic souvenirs and local goods.
+
+For each place provide:
+- name: English name
+- localName: name in ${lang} native script
+- description: 1 sentence describing the place
+- whySpecial: 1 sentence about what makes it unique
+- vibeTags: 2-4 tags like "bargaining", "crafts", "souvenirs", "weekend-only"
+- area: neighborhood or area name
+- phrases: 5-8 contextual phrases useful at this type of place, each with "english", "local" (in ${lang}), and "context"
+
+Return JSON array ONLY: [{ "name": "...", "localName": "...", "description": "...", "whySpecial": "...", "vibeTags": [...], "area": "...", "phrases": [{ "english": "...", "local": "...", "context": "..." }] }]`,
+    },
+  };
+
+  app.get('/destination/:code/explore/:category', cacheLimiter, async (req: Request, res: Response) => {
+    const code = (req.params.code as string).toUpperCase();
+    const category = req.params.category as string;
+    const langName = COUNTRY_LANGS[code];
+
+    if (!langName) {
+      res.status(400).json({ error: 'Invalid country code' });
+      return;
+    }
+
+    const categoryDef = EXPLORE_CATEGORIES[category];
+    if (!categoryDef) {
+      res.status(400).json({ error: 'Invalid explore category' });
+      return;
+    }
+
+    const cacheKey = `explore-${code}-${category}`;
+    // Check in-memory cache first
+    const memoryCached = exploreCache.get(cacheKey);
+    if (memoryCached && Date.now() - memoryCached.timestamp < CACHE_TTL) {
+      res.json(memoryCached.data);
+      return;
+    }
+    // Check file cache
+    const fileCached = readCacheFile(cacheKey);
+    if (fileCached && Date.now() - fileCached.timestamp < CACHE_TTL) {
+      exploreCache.set(cacheKey, fileCached);
+      res.json(fileCached.data);
+      return;
+    }
+
+    const prompt = categoryDef.prompt(langName, `a ${langName}-speaking country (${code})`, code);
+
+    try {
+      const result = await callGemini({
+        model: GEMINI_MODEL,
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      });
+
+      const text = result.text ?? '';
+      const jsonMatch = text.match(/\[[\s\S]*\]/);
+      if (!jsonMatch) {
+        res.status(500).json({ error: 'Failed to parse explore response' });
+        return;
+      }
+
+      const places = JSON.parse(jsonMatch[0]);
+
+      // Validate entries have required fields
+      const valid = places.filter(
+        (p: Record<string, unknown>) =>
+          typeof p.name === 'string' && typeof p.localName === 'string' && typeof p.description === 'string'
+      );
+
+      if (valid.length === 0) {
+        res.status(500).json({ error: 'No valid places in Gemini response' });
+        return;
+      }
+
+      // Enrich with stable IDs and ensure phrases is always an array
+      const enriched = valid.map((p: Record<string, unknown>, i: number) => ({
+        ...p,
+        id: `${code}-explore-${category}-${i + 1}`,
+        phrases: Array.isArray(p.phrases) ? p.phrases : [],
+        vibeTags: Array.isArray(p.vibeTags) ? p.vibeTags : [],
+      }));
+
+      const cacheEntry = { data: enriched, timestamp: Date.now() };
+      exploreCache.set(cacheKey, cacheEntry);
+      writeCacheFile(cacheKey, enriched);
+      res.json(enriched);
+    } catch (err: unknown) {
+      console.error('Explore content error:', err);
+      const { status, message } = classifyError(err);
+      res.status(status).json({ error: message });
+    }
+  });
+
+  // Centralized error handler — catches unhandled route errors
+  app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+    console.error('Unhandled route error:', err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Internal server error' });
     }
   });
 
   return app;
 }
 
+// Process-level crash handlers
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught exception:', err);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled rejection:', reason);
+});
+
 if (require.main === module) {
   const port = process.env.PORT || 3001;
   const app = createApp();
-  app.listen(Number(port), '0.0.0.0', () => {
-    console.log(`VoxLingo server running on 0.0.0.0:${port}`);
+  const server = app.listen(Number(port), '0.0.0.0', () => {
+    console.log(`WanderVox server running on 0.0.0.0:${port}`);
   });
+
+  const shutdown = () => {
+    console.log('Shutting down gracefully...');
+    server.close(() => {
+      console.log('Server closed');
+      process.exit(0);
+    });
+    setTimeout(() => process.exit(1), 10000);
+  };
+
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
 }

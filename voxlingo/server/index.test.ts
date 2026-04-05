@@ -39,6 +39,7 @@ describe('POST /translate', () => {
     expect(res.body).toEqual({
       originalText: 'hello',
       translatedText: 'hola',
+      noSpeechDetected: false,
     });
     expect(mockGenerateContent).toHaveBeenCalledTimes(1);
   });
@@ -238,5 +239,64 @@ describe('GET /destination/:code/tips', () => {
     const app = createApp();
     const res = await request(app).get('/destination/XX/tips');
     expect(res.status).toBe(400);
+  });
+});
+
+describe('GET /destination/:code/explore/:category', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('returns explore places for a valid country and category', async () => {
+    const mockPlaces = [
+      {
+        name: 'Fuunji',
+        localName: '風雲児',
+        description: 'Famous tsukemen shop in Shinjuku.',
+        whySpecial: 'Locals line up at 6am for the broth.',
+        vibeTags: ['casual', 'budget-friendly'],
+        area: 'Shinjuku',
+        phrases: [
+          { english: 'One please', local: '一つください', context: 'Ordering' },
+        ],
+      },
+    ];
+    mockGenerateContent.mockResolvedValue({
+      text: JSON.stringify(mockPlaces),
+    });
+
+    const app = createApp();
+    const res = await request(app).get('/destination/JP/explore/street-food');
+    expect(res.status).toBe(200);
+    expect(res.body).toBeInstanceOf(Array);
+    expect(res.body.length).toBeGreaterThan(0);
+    expect(res.body[0]).toHaveProperty('name');
+    expect(res.body[0]).toHaveProperty('localName');
+    expect(res.body[0]).toHaveProperty('description');
+    expect(res.body[0]).toHaveProperty('phrases');
+    expect(res.body[0]).toHaveProperty('vibeTags');
+  });
+
+  it('returns 400 for invalid country code', async () => {
+    const app = createApp();
+    const res = await request(app).get('/destination/XX/explore/street-food');
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Invalid country code');
+  });
+
+  it('returns 400 for invalid category', async () => {
+    const app = createApp();
+    const res = await request(app).get('/destination/JP/explore/invalid-cat');
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Invalid explore category');
+  });
+
+  it('returns 500 when Gemini call fails', async () => {
+    mockGenerateContent.mockRejectedValue(new Error('API error'));
+
+    const app = createApp();
+    const res = await request(app).get('/destination/JP/explore/hidden-gems');
+    expect(res.status).toBe(500);
+    expect(res.body).toHaveProperty('error');
   });
 });

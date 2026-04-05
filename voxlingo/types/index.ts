@@ -51,3 +51,10 @@ export type {
   SmartVisionResponse,
   EmergencyInfo,
 } from './travel';
+
+export type {
+  ExplorePlace,
+  PlacePhrase,
+  ExploreCategory,
+  ExploreCategoryId,
+} from './explore';

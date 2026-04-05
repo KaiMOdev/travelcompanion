@@ -1,17 +1,16 @@
 import React from 'react';
 import { View, ScrollView, TouchableOpacity, Text, StyleSheet } from 'react-native';
-import { CultureCategory } from '../types';
 import { colors, spacing, radius, typography } from '../constants/theme';
 
 type ChipDef = {
-  key: CultureCategory;
+  key: string;
   label: string;
 };
 
 type Props = {
   categories: ChipDef[];
-  active: CultureCategory;
-  onSelect: (category: CultureCategory) => void;
+  active: string;
+  onSelect: (category: string) => void;
 };
 
 export function CategoryChips({ categories, active, onSelect }: Props) {
