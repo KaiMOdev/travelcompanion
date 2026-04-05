@@ -5,7 +5,7 @@ import { GoogleGenAI } from '@google/genai';
 
 dotenv.config();
 
-const GEMINI_MODEL = 'gemini-2.5-flash';
+const GEMINI_MODEL = 'gemini-2.5-flash-lite';
 
 const LANG_NAMES: Record<string, string> = {
   en: 'English', es: 'Spanish', zh: 'Mandarin Chinese', hi: 'Hindi',

@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
+import { Platform } from 'react-native';
 import { startRecording, stopRecording } from '../services/audio';
-import { translateAudioStream } from '../services/translate';
+import { translateAudio, translateAudioStream } from '../services/translate';
 import { speak, stop } from '../services/speech';
 import { Translation } from '../types';
 
@@ -46,10 +47,10 @@ export function useTranslation() {
 
       const id = Date.now().toString();
 
-      // Add a placeholder translation immediately so the user sees something
+      // Add a placeholder immediately so the user sees activity
       const placeholder: Translation = {
         id,
-        originalText: '',
+        originalText: 'Listening...',
         translatedText: '',
         sourceLang,
         targetLang,
@@ -60,35 +61,52 @@ export function useTranslation() {
       try {
         const { audio, mimeType } = await stopRecording();
 
-        await translateAudioStream(
-          audio,
-          sourceLang,
-          targetLang,
-          mimeType,
-          (partial) => {
-            // Update the placeholder with streaming partial results
-            setTranslations((prev) =>
-              prev.map((t) =>
-                t.id === id
-                  ? {
-                      ...t,
-                      originalText: partial.originalText || t.originalText,
-                      translatedText: partial.translatedText || t.translatedText,
-                    }
-                  : t,
-              ),
-            );
-          },
+        // Update placeholder to show we're now translating
+        setTranslations((prev) =>
+          prev.map((t) =>
+            t.id === id ? { ...t, originalText: 'Translating...' } : t,
+          ),
         );
 
+        let finalResult: { originalText: string; translatedText: string };
+
+        if (Platform.OS === 'web') {
+          // Web supports ReadableStream — use streaming for progressive updates
+          finalResult = await translateAudioStream(
+            audio,
+            sourceLang,
+            targetLang,
+            mimeType,
+            (partial) => {
+              setTranslations((prev) =>
+                prev.map((t) =>
+                  t.id === id
+                    ? {
+                        ...t,
+                        originalText: partial.originalText || t.originalText,
+                        translatedText: partial.translatedText || t.translatedText,
+                      }
+                    : t,
+                ),
+              );
+            },
+          );
+        } else {
+          // Mobile: single call — 1 Gemini request instead of 2, ~2x faster
+          finalResult = await translateAudio(audio, sourceLang, targetLang, mimeType);
+          setTranslations((prev) =>
+            prev.map((t) =>
+              t.id === id
+                ? { ...t, originalText: finalResult.originalText, translatedText: finalResult.translatedText }
+                : t,
+            ),
+          );
+        }
+
         // Speak the final translation
-        setTranslations((prev) => {
-          const final = prev.find((t) => t.id === id);
-          if (final && final.translatedText) {
-            speakTranslation(final.translatedText, targetLang, id);
-          }
-          return prev;
-        });
+        if (finalResult.translatedText) {
+          speakTranslation(finalResult.translatedText, targetLang, id);
+        }
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Translation failed';
         setError(msg);
