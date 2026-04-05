@@ -16,6 +16,7 @@ import { LanguagePicker } from '../../components/LanguagePicker';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import { MenuResult } from '../../components/MenuResult';
 import { SignResult } from '../../components/SignResult';
+import { OfflineBanner } from '../../components/OfflineBanner';
 import { translateImageSmart } from '../../services/vision';
 import { SmartVisionResponse } from '../../types';
 import { colors, shadow, spacing, radius } from '../../constants/theme';
@@ -205,6 +206,7 @@ export default function CameraScreen() {
 
   return (
     <View style={styles.container}>
+      <OfflineBanner />
       <SafeAreaView edges={['top']} style={styles.pickerBar}>
         <Text style={styles.pickerTitle}>TRANSLATE TO</Text>
         <View style={styles.pickerWrapper}>

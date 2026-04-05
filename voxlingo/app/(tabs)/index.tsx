@@ -21,6 +21,7 @@ import { ShowCard } from '../../components/ShowCard';
 import { DestinationPicker } from '../../components/DestinationPicker';
 import { EmergencyCard } from '../../components/EmergencyCard';
 import { TaxiCard } from '../../components/TaxiCard';
+import { OfflineBanner } from '../../components/OfflineBanner';
 import { Translation } from '../../types';
 import { colors, spacing, radius, shadow } from '../../constants/theme';
 import { setSlowMode, getSlowMode, speak } from '../../services/speech';
@@ -144,6 +145,8 @@ export default function TravelScreen() {
           </View>
         </SafeAreaView>
       </View>
+
+      <OfflineBanner />
 
       <KeyboardAvoidingView style={styles.body} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ErrorBanner message={error} onDismiss={clearError} />
