@@ -61,6 +61,13 @@ export function useTranslation() {
       try {
         const { audio, mimeType } = await stopRecording();
 
+        // Discard very short recordings (< 2KB = ~0.5s silence/noise)
+        if (audio.length < 2000) {
+          setTranslations((prev) => prev.filter((t) => t.id !== id));
+          setIsTranslating(false);
+          return;
+        }
+
         // Update placeholder to show we're now translating
         setTranslations((prev) =>
           prev.map((t) =>
