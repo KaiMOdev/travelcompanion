@@ -323,6 +323,50 @@ Return JSON only. No markdown wrapping.`;
     }
   });
 
+  // --- Text translation endpoint (for addresses, UI text) ---
+
+  app.post('/translate/text', async (req: Request, res: Response) => {
+    const { texts, targetLang } = req.body;
+
+    if (!texts || !Array.isArray(texts) || !targetLang) {
+      res.status(400).json({ error: 'Missing required fields: texts (array), targetLang' });
+      return;
+    }
+
+    if (!LANG_NAMES[targetLang]) {
+      res.status(400).json({ error: 'Invalid language code' });
+      return;
+    }
+
+    const targetName = LANG_NAMES[targetLang];
+    const prompt = `Translate the following texts to ${targetName}. Return a JSON object with a "translations" array containing each translated text in order. Use native script (e.g. Cyrillic for Croatian/Russian, Kanji for Japanese, etc.).
+
+Texts to translate:
+${texts.map((t: string, i: number) => `${i + 1}. "${t}"`).join('\n')}
+
+Return JSON only: { "translations": ["...", "..."] }`;
+
+    try {
+      const result = await ai.models.generateContent({
+        model: GEMINI_MODEL,
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      });
+
+      const text = result.text ?? '';
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        res.status(500).json({ error: 'Failed to parse translation response' });
+        return;
+      }
+
+      const parsed = JSON.parse(jsonMatch[0]);
+      res.json({ translations: parsed.translations || [] });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Text translation failed';
+      res.status(500).json({ error: message });
+    }
+  });
+
   // --- Destination endpoints ---
 
   app.get('/destination/:code/phrases', async (req: Request, res: Response) => {

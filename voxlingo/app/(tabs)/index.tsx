@@ -307,6 +307,7 @@ export default function TravelScreen() {
       <TaxiCard
         visible={showTaxi}
         hotelAddress={hotelAddress || undefined}
+        targetLang={targetLang}
         onClose={() => setShowTaxi(false)}
       />
     </View>

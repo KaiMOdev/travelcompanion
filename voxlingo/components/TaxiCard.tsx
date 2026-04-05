@@ -1,17 +1,41 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { getCurrentLocation, LocationInfo } from '../services/location';
+import { API_URL } from '../services/api';
 import { colors, spacing, radius, typography } from '../constants/theme';
 
 type Props = {
   visible: boolean;
   hotelAddress?: string;
-  hotelAddressLocal?: string;
+  targetLang?: string;
   onClose: () => void;
 };
 
-export function TaxiCard({ visible, hotelAddress, hotelAddressLocal, onClose }: Props) {
+async function translateText(text: string, targetLang: string): Promise<string> {
+  try {
+    const response = await fetch(`${API_URL}/translate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        audio: '',
+        sourceLang: 'en',
+        targetLang,
+        text,
+      }),
+    });
+    // Fallback: use a simple Gemini text call via a dedicated endpoint
+    // For now, we'll do a lightweight fetch to the vision endpoint trick
+    // Actually, let's just call Gemini directly through a text translation
+    return text; // Will be replaced below
+  } catch {
+    return text;
+  }
+}
+
+export function TaxiCard({ visible, hotelAddress, targetLang, onClose }: Props) {
   const [location, setLocation] = useState<LocationInfo | null>(null);
+  const [translatedAddress, setTranslatedAddress] = useState<string | null>(null);
+  const [translatedHotel, setTranslatedHotel] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,12 +49,38 @@ export function TaxiCard({ visible, hotelAddress, hotelAddressLocal, onClose }: 
     setIsLoading(true);
     setError(null);
     setLocation(null);
+    setTranslatedAddress(null);
+    setTranslatedHotel(null);
+
     const loc = await getCurrentLocation();
-    if (loc) {
-      setLocation(loc);
-    } else {
+    if (!loc) {
       setError('Could not get your location. Please enable location services.');
+      setIsLoading(false);
+      return;
     }
+    setLocation(loc);
+
+    // Translate address and hotel to target language
+    if (targetLang && targetLang !== 'en') {
+      try {
+        const response = await fetch(`${API_URL}/translate/text`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            texts: [loc.address, hotelAddress || ''].filter(Boolean),
+            targetLang,
+          }),
+        });
+        if (response.ok) {
+          const result = await response.json();
+          if (result.translations?.[0]) setTranslatedAddress(result.translations[0]);
+          if (result.translations?.[1] && hotelAddress) setTranslatedHotel(result.translations[1]);
+        }
+      } catch {
+        // Translation failed — show original addresses
+      }
+    }
+
     setIsLoading(false);
   };
 
@@ -63,15 +113,26 @@ export function TaxiCard({ visible, hotelAddress, hotelAddressLocal, onClose }: 
 
             <View style={styles.addressCard}>
               <Text style={styles.addressLabel}>My current location:</Text>
-              <Text style={styles.addressText}>{location.address}</Text>
+              {translatedAddress ? (
+                <>
+                  <Text style={styles.addressText}>{translatedAddress}</Text>
+                  <Text style={styles.addressOriginal}>{location.address}</Text>
+                </>
+              ) : (
+                <Text style={styles.addressText}>{location.address}</Text>
+              )}
             </View>
 
             {hotelAddress && (
               <View style={styles.addressCard}>
                 <Text style={styles.addressLabel}>Take me to:</Text>
-                <Text style={styles.addressText}>{hotelAddress}</Text>
-                {hotelAddressLocal && (
-                  <Text style={styles.addressLocal}>{hotelAddressLocal}</Text>
+                {translatedHotel ? (
+                  <>
+                    <Text style={styles.addressText}>{translatedHotel}</Text>
+                    <Text style={styles.addressOriginal}>{hotelAddress}</Text>
+                  </>
+                ) : (
+                  <Text style={styles.addressText}>{hotelAddress}</Text>
                 )}
               </View>
             )}
@@ -157,10 +218,10 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     lineHeight: 36,
   },
-  addressLocal: {
-    ...typography.subtitle,
-    color: colors.primary,
-    marginTop: spacing.md,
+  addressOriginal: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginTop: spacing.sm,
   },
   coordinates: {
     ...typography.caption,
