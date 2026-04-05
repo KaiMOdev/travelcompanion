@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { View, ScrollView, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { CultureCategory } from '../types';
 import { colors, spacing, radius, typography } from '../constants/theme';
 
@@ -16,11 +16,12 @@ type Props = {
 
 export function CategoryChips({ categories, active, onSelect }: Props) {
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.container}
-    >
+    <View style={styles.row}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.container}
+      >
       {categories.map((cat) => {
         const isActive = cat.key === active;
         return (
@@ -36,21 +37,28 @@ export function CategoryChips({ categories, active, onSelect }: Props) {
           </TouchableOpacity>
         );
       })}
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  row: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.background,
+  },
   container: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    gap: spacing.sm,
+    alignItems: 'center',
   },
   chip: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: radius.full,
     backgroundColor: colors.surfaceAlt,
+    marginRight: spacing.sm,
   },
   chipActive: {
     backgroundColor: colors.primary,
